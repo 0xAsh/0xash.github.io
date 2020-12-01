@@ -919,6 +919,7 @@ pre {
 .box-note {
   background-color: #eee;
   border-left-color: #2980b9;
+  color: #000000;
 }
 
 .box-warning {
