@@ -360,7 +360,6 @@ img {
 
 footer {
   padding: 1.875rem 0;
-  border-top: 1px #EAEAEA solid;
   margin-top: 3.125rem;
   font-size: 0.875rem;
   background-color: #101C2C;
@@ -917,24 +916,27 @@ pre {
 }
 
 .box-note {
-  background-color: #78c0ae;
-  border-left-color: #2980b9;
+  background-color: #eee;
+  border-left-color: #26462d;
   color: #000000;
 }
 
 .box-warning {
-  background-color: #78c0ae;
+  background-color: #fdf5d4;
   border-left-color: #f1c40f;
+  color: #000000;
 }
 
 .box-error {
-  background-color: #78c0ae;
+  background-color: #f4dddb;
   border-left-color: #c0392b;
+  color: #000000;
 }
 
 .box-success {
-  background-color: #78c0ae;
+  background-color: #98FB98;
   border-left-color: #3CB371;
+  #color: #000000;
 }
 
 /* --- Misc blog post styles --- */
