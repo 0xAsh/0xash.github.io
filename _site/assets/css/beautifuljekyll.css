@@ -923,17 +923,17 @@ pre {
 }
 
 .box-warning {
-  background-color: #fdf5d4;
+  background-color: #78c0ae;
   border-left-color: #f1c40f;
 }
 
 .box-error {
-  background-color: #f4dddb;
+  background-color: #78c0ae;
   border-left-color: #c0392b;
 }
 
 .box-success {
-  background-color: #98FB98;
+  background-color: #78c0ae;
   border-left-color: #3CB371;
 }
 
