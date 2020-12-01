@@ -10,15 +10,62 @@
     
     
       <item>
-        <title>Flake it till you make it</title>
+        <title>Kioptrix Level 1 Writeup</title>
         <description>
-          Excerpt from Soulshaping by Jeff Brown - 
-          awdkapwdwad
+          
+          
 
         </description>
-        <pubDate>Mon, 30 Nov 2020 00:00:00 -0500</pubDate>
-        <link>http://localhost:4000/2020-11-30-lol123/</link>
-        <guid isPermaLink="true">http://localhost:4000/2020-11-30-lol123/</guid>
+        <pubDate>Sun, 02 Aug 2020 00:00:00 -0400</pubDate>
+        <link>http://localhost:4000/2020-08-02-FristiLeaks-1.3/</link>
+        <guid isPermaLink="true">http://localhost:4000/2020-08-02-FristiLeaks-1.3/</guid>
+      </item>
+    
+      <item>
+        <title>Kioptrix Level 1 Writeup</title>
+        <description>
+          
+          
+
+        </description>
+        <pubDate>Wed, 29 Jul 2020 00:00:00 -0400</pubDate>
+        <link>http://localhost:4000/2020-07-29-Kioptrix-Level-1.3/</link>
+        <guid isPermaLink="true">http://localhost:4000/2020-07-29-Kioptrix-Level-1.3/</guid>
+      </item>
+    
+      <item>
+        <title>Kioptrix Level 1 Writeup</title>
+        <description>
+          
+          
+
+        </description>
+        <pubDate>Wed, 29 Jul 2020 00:00:00 -0400</pubDate>
+        <link>http://localhost:4000/2020-07-29-Kioptrix-Level-1.2/</link>
+        <guid isPermaLink="true">http://localhost:4000/2020-07-29-Kioptrix-Level-1.2/</guid>
+      </item>
+    
+      <item>
+        <title>Kioptrix Level 1.1 Writeup</title>
+        <description>
+          
+          
+
+        </description>
+        <pubDate>Tue, 28 Jul 2020 00:00:00 -0400</pubDate>
+        <link>http://localhost:4000/2020-07-28-Kioptrix-Level-1.1/</link>
+        <guid isPermaLink="true">http://localhost:4000/2020-07-28-Kioptrix-Level-1.1/</guid>
+      </item>
+    
+      <item>
+        <title>Kioptrix Level 1 Writeup</title>
+        <description>
+          Kioptrix Level 1 is a simple boot-to-root VulnHub box that is vulnerable to a remote code execution vulnerability impacting its Samba service. This box is a great beginner test to learn basic port enumeration and exploitation. - 
+          Kioptix Level 1 (#1) Writeup In preperation for my OSCP exam, I tackled a series of VulnHub boxes, Kioptrix Level 1 being the first. In retrospect, this box is really, really old. Like 2010 old, so it’s real-life applicability is questionable. No matter what, it’s good baseline prep for anyone...
+        </description>
+        <pubDate>Mon, 27 Jul 2020 00:00:00 -0400</pubDate>
+        <link>http://localhost:4000/2020-07-27-Kioptrix-Level-1/</link>
+        <guid isPermaLink="true">http://localhost:4000/2020-07-27-Kioptrix-Level-1/</guid>
       </item>
     
       <item>
@@ -30,17 +77,6 @@
         <pubDate>Fri, 28 Feb 2020 00:00:00 -0500</pubDate>
         <link>http://localhost:4000/2020-02-28-test-markdown/</link>
         <guid isPermaLink="true">http://localhost:4000/2020-02-28-test-markdown/</guid>
-      </item>
-    
-      <item>
-        <title>Flake it till you make it</title>
-        <description>
-          Excerpt from Soulshaping by Jeff Brown - 
-          Under what circumstances should we step off a path? When is it essential that we finish what we start? If I bought a bag of peanuts and had an allergic reaction, no one would fault me if I threw it out. If I ended a relationship with a woman who...
-        </description>
-        <pubDate>Wed, 26 Feb 2020 00:00:00 -0500</pubDate>
-        <link>http://localhost:4000/2020-02-26-flake-it-till-you-make-it/</link>
-        <guid isPermaLink="true">http://localhost:4000/2020-02-26-flake-it-till-you-make-it/</guid>
       </item>
     
   </channel>

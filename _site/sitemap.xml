@@ -1,16 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
-<loc>http://localhost:4000/2020-02-26-flake-it-till-you-make-it/</loc>
-<lastmod>2020-02-26T00:00:00-05:00</lastmod>
-</url>
-<url>
 <loc>http://localhost:4000/2020-02-28-test-markdown/</loc>
 <lastmod>2020-02-28T00:00:00-05:00</lastmod>
 </url>
 <url>
-<loc>http://localhost:4000/2020-11-30-lol123/</loc>
-<lastmod>2020-11-30T00:00:00-05:00</lastmod>
+<loc>http://localhost:4000/2020-07-27-Kioptrix-Level-1/</loc>
+<lastmod>2020-07-27T00:00:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://localhost:4000/2020-07-28-Kioptrix-Level-1.1/</loc>
+<lastmod>2020-07-28T00:00:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://localhost:4000/2020-07-29-Kioptrix-Level-1.2/</loc>
+<lastmod>2020-07-29T00:00:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://localhost:4000/2020-07-29-Kioptrix-Level-1.3/</loc>
+<lastmod>2020-07-29T00:00:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://localhost:4000/2020-08-02-FristiLeaks-1.3/</loc>
+<lastmod>2020-08-02T00:00:00-04:00</lastmod>
 </url>
 <url>
 <loc>http://localhost:4000/aboutme/</loc>
@@ -20,5 +32,8 @@
 </url>
 <url>
 <loc>http://localhost:4000/tags/</loc>
+</url>
+<url>
+<loc>http://localhost:4000/page2/</loc>
 </url>
 </urlset>
