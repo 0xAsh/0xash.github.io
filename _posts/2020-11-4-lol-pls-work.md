@@ -16,7 +16,43 @@ This is crazy
 lol!
 ```
 
+
+
 {% highlight bash linenos %}
 #!/bin/bash
-  echo lol!
+  echo "lol"
+{% endhighlight %}
+
+
+{% highlight bash linenos %}
+#!/bin/bash
+  echo "lol"
+{% endhighlight %}
+
+
+
+{% highlight ruby linenos %}
+#!/bin/bash
+  echo "lol"
+{% endhighlight %}
+
+
+
+{% highlight perl linenos %}
+#!/bin/bash
+  echo "lol"
+{% endhighlight %}
+
+
+
+{% highlight sh linenos %}
+#!/bin/bash
+  echo "lol"
+{% endhighlight %}
+
+
+
+{% highlight python linenos %}
+#!/bin/bash
+  echo "lol"
 {% endhighlight %}
