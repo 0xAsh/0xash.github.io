@@ -21,6 +21,9 @@ lol!
 {% highlight bash linenos %}
 #!/bin/bash
   echo "lol"
+for i in {00..69}; do
+  echo $i
+done;
 {% endhighlight %}
 
 
