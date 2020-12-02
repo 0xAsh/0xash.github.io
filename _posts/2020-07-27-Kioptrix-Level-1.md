@@ -1,17 +1,16 @@
 ---
 layout: post
-title: Kioptrix Level 1 Writeup
-subtitle: Kioptrix Level 1 is a simple boot-to-root VulnHub box that is vulnerable to a remote code execution vulnerability impacting its Samba service. This box is a great beginner test to learn basic port enumeration and exploitation.
-cover-img: /assets/img/logo_post_banner.png
+title: Kioptrix Level 1 (#1) Writeup
+excerpt: Kioptrix Level 1 is a simple boot-to-root VulnHub box that is vulnerable to a remote code execution vulnerability impacting its Samba service. This box is a great beginner test to learn basic port enumeration and exploitation.
 tags: VulnHub
 comments: true
 ---
 
-# Kioptix Level 1 (#1) Writeup
-
 In preperation for my OSCP exam, I tackled a series of VulnHub boxes, Kioptrix Level 1 being the first. In retrospect, this box is _really_, _really_ old. Like _2010_ old, so it's real-life applicability is questionable. 
 
-No matter what, it's good baseline prep for anyone studying for their OSCP/PWK, learning Network pentesting, and trying to get some practice enumerating a box.
+It is a simple boot-to-root box that is vulnerable to a remote code execution vulnerability impacting its Samba service.
+
+It's good baseline prep for anyone studying for their OSCP/PWK, learning Network pentesting, and trying to get some practice enumerating a box.
 
 I'll assume you've already got the box running and are able to reach it. Let's get going.
 
@@ -19,7 +18,7 @@ I'll assume you've already got the box running and are able to reach it. Let's g
 
 ### NMAP Scans
 
-```
+```bash
 Starting Nmap 7.80 ( https://nmap.org ) at 2020-07-26 23:04 EDT
 Nmap scan report for 10.0.0.35
 Host is up (0.00013s latency).
@@ -80,7 +79,7 @@ Cool, we see quite a few interesting possibilities here. Let's start from bottom
 
 We can use Netcat to quickly grab the service banner on port 22. You'll notice that this appeared on NMAP scans too, but manually fingerprinting the service isn't _always_ a waste of time.
 
-```
+```bash
 ein@~/VulnHub/Kioptrix1:$ nc 10.0.0.35 22
 SSH-1.99-OpenSSH_2.9p2
 ^C
@@ -96,7 +95,7 @@ Browsing to the port 80 via a web browser simply displays the default Apache lan
 ![Browsing to HTTP](/assets/img/VulnHub/Kioptrix1_1.PNG)
 
 Let's fingerprint the port using netcat and try to find out what version of Apache is running: 
-```
+```bash
 ein@~/VulnHub/Kioptrix1:$ nc 10.0.0.35 80
 GET / HTTP/1.0
 
@@ -117,7 +116,7 @@ Cool, so we can see that `Apache/1.3.20` is running as well as `mod_ssl/2.8.4` a
 
 We'll skip up to port 139. I'll go ahead and use `smbclient` to see if there are any shares on the machine:
 
-```
+```bash
 smbclient -m SMB2 -N -L //10.0.0.35/
 Server does not support EXTENDED_SECURITY  but 'client use spnego = yes' and 'client ntlmv2 auth = yes' is set
 Anonymous login successful
@@ -142,7 +141,7 @@ Anonymous login successful
 
 Okay, looks like the `IPC$` and `ADMIN$` shares are hosted via SMB. Let's see if we can connect to these shares:
 
-```
+```bash
 ein@~/VulnHub/Kioptrix1:$ smbclient -m SMB2 -N //10.0.0.35/IPC$
 Server does not support EXTENDED_SECURITY  but 'client use spnego = yes' and 'client ntlmv2 auth = yes' is set
 Anonymous login successful
@@ -157,7 +156,8 @@ tree connect failed: NT_STATUS_WRONG_PASSWORD
 ```
 
 No luck, let's grab the SMB version before moving on. I'll quickly use the `auxiliary/scanner/smb/smb_version` Metasploit module to perform this:
-```
+
+```bash
 msf5 auxiliary(scanner/smb/smb_version) > run
 
 [*] 10.0.0.35:139         - Host could not be identified: Unix (Samba 2.2.1a)
@@ -177,18 +177,18 @@ Let's kick this off on both port 80 and 443 while we hit some other services. We
 
 #### HTTPS:
 
-```
+```bash
 ffuf -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt  -u https://10.0.0.35/FUZZ
 ```
 
 #### HTTP:
 
-```
+```bash
 ffuf -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt  -u http://10.0.0.35/FUZZ
 ```
 
 Let's take a look at the results:
-```
+```bash
 
         /'___\  /'___\           /'___\       
        /\ \__/ /\ \__/  __  __  /\ \__/       
@@ -233,7 +233,7 @@ mrtg                    [Status: 301, Size: 292, Words: 19, Lines: 10]
 
 Attempting to access the `/mrtg` sub-directory redirects us to `/mrtg/`:
 
-```
+```bash
 nc 10.0.0.35 80
 GET /mrtg HTTP/1.0
 
@@ -263,24 +263,32 @@ Interesting, it's hosting some network monitoring software called `Multi Router 
 
 Unfortunately, further Googling eventually shows this is a dead end.
 
-## Exploitation
+# Exploitation
 
 Let's go back to those version numbers we grabbed during the enumeration phase. If we google the Samba version (2.2.1a), we can quickly find an [interesting exploit](https://www.exploit-db.com/exploits/10).
 
 This is a really old exploit, but so is the box.. Let's see if it works. We can start by grabbing it and compiling it using GCC.
 
-`wget https://www.exploit-db.com/download/10`
+```bash
+wget https://www.exploit-db.com/download/10
+```
 
 Let's remove all the garbage comments from the top, and save it with the `.c` file extension.
 
-`vim 10`
+```bash
+vim 10
+```
 
 Now let's compile it using GCC
 
-`gcc exploit.c -o exploit`
+```bash
+gcc exploit.c -o exploit
+```
 
-Let's specify the architecture via `-b 0` and then the IP as the argument `<Target IP>`
+To run the compiled exploit, we'll need to specify the architecture via `-b 0` and then the IP as the positional argument `<Target IP>`.
 
 ![Running the exploit](/assets/img/VulnHub/Kioptrix1_4.PNG)
 
-And that's it! Rooted!
+# Privilege Escalation
+
+After running the exploit, we are dropped directly into a root shell. So that's it, rooted!

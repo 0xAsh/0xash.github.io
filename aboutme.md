@@ -3,9 +3,10 @@ layout: page
 title: About me
 ---
 
+Just a dude who's interested in all things offensive security, red teaming, hacking(?), information security, whatever else you may call it. 
 
-- Pentester @ [risk3sixty](https://risk3sixty.com)
-- Want to talk to me? Grab my PGP key from [Keybase](https://keybase.io/r3sasher)
+- Currently a pentester @ [risk3sixty](https://risk3sixty.com)
+- Want to talk to me? Shoot me a message on [Keybase](https://keybase.io/r3sasher)
 
 ### Certifications/Experience/Accolades (so far)
 - [OSCP](https://www.offensive-security.com/pwk-oscp/)
@@ -14,4 +15,9 @@ title: About me
 - BSides ATL - [Coalfire CTF 2019 1st Place](https://coles.kennesaw.edu/news/stories/2019-05-30-bsides-atlanta-2019.php)
 
 ### Projects
-- I need to do more dev work...
+- TBD
+
+### What am I working on currently?
+For work I'm currently working on  [_redacted_]... yeah sorry I can't say. 
+
+In my free time I'm currently making a big push to get caught up with legacy HackTheBox content. This includes challenges/boxes, which you'll see me post about from time to time.
