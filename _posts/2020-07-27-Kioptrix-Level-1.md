@@ -4,6 +4,7 @@ title: Kioptrix Level 1 (#1) Writeup
 excerpt: Kioptrix Level 1 is a simple boot-to-root VulnHub box that is vulnerable to a remote code execution vulnerability impacting its Samba service. This box is a great beginner test to learn basic port enumeration and exploitation.
 tags: VulnHub
 comments: true
+social-share: false
 ---
 
 In preperation for my OSCP exam, I tackled a series of VulnHub boxes, Kioptrix Level 1 being the first. In retrospect, this box is _really_, _really_ old. Like _2010_ old, so it's real-life applicability is questionable. 

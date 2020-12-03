@@ -4,6 +4,7 @@ title: FristiLeaks 1.3 Writeup
 excerpt: FristiLeaks 1.3 is a VulnHub box that I used to prepare for the OSCP exam. It's by far one of my favorite VulnHub boxes I've done, as it involves some fun and simple reversing/code analysis. It also involves practice hopping around and enumerating a Linux environment from the perspective of multiple users, and requires some creative thinking.The challenge begins by using some simple guesswork to find a login portal. The source code of this login portal cotains an HTML comment that leaks a base64 encoded image. After decoding the image, we are able to gather the password used to login to web application. We exploit the web application's upload functionality to upload a PHP reverse shell and get a reverse shell. Privilege escalation involves abusing a cronjob, reversing a simple python cryptography algorithm, reusing passwords, and a sudo misconfiguration to finally gather root.
 tags: VulnHub
 comments: true
+social-share: false
 ---
 
 FristiLeaks 1.3 is a VulnHub box that I used to prepare for the OSCP exam. It's by far one of my favorite VulnHub boxes I've done, as it involves some fun _and_ simple reversing/code analysis.

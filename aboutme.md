@@ -20,4 +20,6 @@ Just a dude who's interested in all things offensive security, red teaming, hack
 ### What am I working on currently?
 For work I'm currently working on  [_redacted_]... yeah sorry I can't say. 
 
-In my free time I'm currently making a big push to get caught up with legacy HackTheBox content. This includes challenges/boxes, which you'll see me post about from time to time.
+In my _free_ time I'm currently making a big push to get caught up with legacy HackTheBox content. This includes challenges/boxes, which you'll see me post about from time to time.
+
+<center><script src="https://www.hackthebox.eu/badge/72624"></script></center>

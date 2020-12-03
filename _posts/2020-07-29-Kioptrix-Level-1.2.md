@@ -4,6 +4,7 @@ title: Kioptrix Level 1.2 (#3) Writeup
 excerpt: Kioptrix Level 1.2 continues the Kioptrix VulnHub series, and provides great experience creativily reusing credentials, attacking common web applications, and cracking hashed passwords. We start by exploiting LotusCMS to get a shell as www-data. From there, we find MySQL credentials that we use to login to phpMyAdmin and dump hashed user passwords. Finally, after cracking and logging in using these credentials, we exploit a sudo misconfiguration that allows us to privilege escalate using the ht text editor.
 tags: VulnHub
 comments: true
+social-share: false
 ---
 
 Kioptrix Level 1.2 continues the Kioptrix VulnHub series, and provides great experience creativily reusing credentials, attacking common web applications, and cracking hashed passwords. 

@@ -4,6 +4,7 @@ title: Kioptrix Level 1.3 (#4) Writeup
 excerpt: Kioptrix Level 1.3 is the fourth iteration of the Kioptrix VulnHub challenges. It involves taking advantage of a SQL injection vulnerablility to login to a simple web application that leaks user credentials. Using these credentials we can connect to the box via SSH. Unfortunately, our SSH sessions spawn a restricted shell with very limited command availability. We use `echo` to spawn a full bash shell and escape these confines, from which we enumerate the box and find MySQL credentials. MySQL is running as root and we are able to use `sys_exec` to set the setuid bit on `/bin/bash`. From here we can simply execute the binary and receieve a root shell.
 tags: VulnHub
 comments: true
+social-share: false
 ---
 
 Kioptrix Level 1.3 is the fourth iteration of the Kioptrix VulnHub challenges. It involves taking advantage of a SQL injection vulnerablility to login to a simple web application that leaks user credentials. 
