@@ -5,6 +5,7 @@ excerpt: FristiLeaks 1.3 is a VulnHub box that I used to prepare for the OSCP ex
 tags: VulnHub
 comments: true
 social-share: false
+thumbnail-img: /assets/img/VulnHub/fristileaks1.3_logo.png
 ---
 
 FristiLeaks 1.3 is a VulnHub box that I used to prepare for the OSCP exam. It's by far one of my favorite VulnHub boxes I've done, as it involves some fun _and_ simple reversing/code analysis.

@@ -15,6 +15,8 @@ Just a dude who's interested in all things offensive security, red teaming, hack
 - BSides ATL - [Coalfire CTF 2019 1st Place](https://coles.kennesaw.edu/news/stories/2019-05-30-bsides-atlanta-2019.php)
 
 ### Projects
+- [street2phone.py](https://github.com/0xash/street2phone.py) - A Python script to farm local phone numbers from a given address using the Google Places API. Check out the related [blog post](https://0xash.io/2020-12-14-Farming-phone-numbers-with-Python-and-the-Google-Places-API/).
+- TBD
 - TBD
 
 ### What am I working on currently?

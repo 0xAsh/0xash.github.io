@@ -5,6 +5,7 @@ excerpt: Kioptrix Level 1.2 continues the Kioptrix VulnHub series, and provides 
 tags: VulnHub
 comments: true
 social-share: false
+thumbnail-img: /assets/img/VulnHub/kioptrix1.2_logo.png
 ---
 
 Kioptrix Level 1.2 continues the Kioptrix VulnHub series, and provides great experience creativily reusing credentials, attacking common web applications, and cracking hashed passwords. 

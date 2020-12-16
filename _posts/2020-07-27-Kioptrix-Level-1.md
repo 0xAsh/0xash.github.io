@@ -5,6 +5,7 @@ excerpt: Kioptrix Level 1 is a simple boot-to-root VulnHub box that is vulnerabl
 tags: VulnHub
 comments: true
 social-share: false
+thumbnail-img: /assets/img/VulnHub/kioptrix1_logo.png
 ---
 
 In preperation for my OSCP exam, I tackled a series of VulnHub boxes, Kioptrix Level 1 being the first. In retrospect, this box is _really_, _really_ old. Like _2010_ old, so it's real-life applicability is questionable. 

@@ -5,6 +5,7 @@ excerpt: Kioptrix Level 1.1 is the next box in the series of Kioptrix VulnHub bo
 tags: VulnHub
 comments: true
 social-share: false
+thumbnail-img: /assets/img/VulnHub/kioptrix1.1_logo.png
 ---
 
 Kioptrix Level 1.1 is the next box in the series of Kioptrix VulnHub boxes. This box ups the ante from its predecessor, beginning with a simple SQL injection exploit to gain access to a web console. The web console can be bypassed to execute code, which we use to get a simple reverse shell. Finally, we successfully privilege escalate to root using a kernel exploit. 

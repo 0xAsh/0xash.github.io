@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Beautiful Jekyll 5.0.0 | Copyright Dean Attali 2020 -->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  
+
+  
+
+  <title>Farming phone numbers with Python and the Google Places API</title>
+
+  
+  <meta name="author" content="Asher Andree">
+  
+
+  <meta name="description" content="Only care about the source code? Checkout the Github Repo Background &amp;amp; Motivation One day a friend asked me something along the lines of: “Do you think you could grab the local phone number code from an address?” A simple question. “Yeah!” I answered. A quick Google search can get...">
+
+  
+
+  
+
+  <link rel="alternate" type="application/rss+xml" title="0xAsh" href="http://localhost:4000/feed.xml">
+
+  
+
+  
+
+  
+
+
+  
+    
+      
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+
+    
+      
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css">
+
+
+    
+      
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic">
+
+
+    
+      
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800">
+
+
+    
+  
+
+  
+    
+      <link rel="stylesheet" href="/assets/css/bootstrap-social.css">
+    
+      <link rel="stylesheet" href="/assets/css/beautifuljekyll.css">
+    
+  
+
+  
+
+  
+  
+  
+
+  
+
+  
+  <meta property="og:site_name" content="0xAsh">
+  <meta property="og:title" content="Farming phone numbers with Python and the Google Places API">
+  <meta property="og:description" content="Only care about the source code? Checkout the Github Repo Background &amp;amp; Motivation One day a friend asked me something along the lines of: “Do you think you could grab the local phone number code from an address?” A simple question. “Yeah!” I answered. A quick Google search can get...">
+
+  
+  <meta property="og:image" content="http://localhost:4000/assets/img/street2phone/street2phone.png">
+  
+
+  
+  <meta property="og:type" content="article">
+  <meta property="og:article:author" content="Asher Andree">
+  <meta property="og:article:published_time" content="2020-12-14T00:00:00-05:00">
+  <meta property="og:url" content="http://localhost:4000/2020-12-14-Farming-phone-numbers-with-Python-and-the-Google-Places-API/">
+  <link rel="canonical" href="http://localhost:4000/2020-12-14-Farming-phone-numbers-with-Python-and-the-Google-Places-API/">
+  
+
+  
+  <meta name="twitter:card" content="summary_large_image">
+  
+  <meta name="twitter:site" content="@0xashhh">
+  <meta name="twitter:creator" content="@0xashhh">
+
+  <meta property="twitter:title" content="Farming phone numbers with Python and the Google Places API">
+  <meta property="twitter:description" content="Only care about the source code? Checkout the Github Repo Background &amp;amp; Motivation One day a friend asked me something along the lines of: “Do you think you could grab the local phone number code from an address?” A simple question. “Yeah!” I answered. A quick Google search can get...">
+
+  
+  <meta name="twitter:image" content="http://localhost:4000/assets/img/street2phone/street2phone.png">
+  
+
+  
+
+
+  
+
+  
+
+</head>
+
+
+<body>
+
+  
+
+
+  <nav class="navbar navbar-expand-xl navbar-light fixed-top navbar-custom top-nav-regular"><a class="navbar-brand" href="http://localhost:4000/">0xAsh</a><button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="main-navbar">
+    <ul class="navbar-nav ml-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="/aboutme">About Me</a>
+          </li></ul>
+  </div>
+
+  
+
+  
+    <div class="avatar-container">
+      <div class="avatar-img-border">
+        <a href="http://localhost:4000/">
+          <img alt="Navigation bar avatar" class="avatar-img" src="/assets/img/logo_htb.png" />
+        </a>
+      </div>
+    </div>
+  
+
+</nav>
+
+
+  <!-- TODO this file has become a mess, refactor it -->
+
+
+
+
+
+
+
+<header class="header-section ">
+
+<div class="intro-header no-img">
+  <div class="container-md">
+    <div class="row">
+      <div class="col-xl-8 offset-xl-2 col-lg-10 offset-lg-1">
+        <div class="post-heading">
+          <h1>Farming phone numbers with Python and the Google Places API</h1>
+          
+
+          
+            <span class="post-meta">Posted on December 14, 2020</span>
+            
+            
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</header>
+
+
+
+
+
+<div class=" container-md ">
+  <div class="row">
+    <div class=" col-xl-8 offset-xl-2 col-lg-10 offset-lg-1 ">
+
+      
+        
+        
+        
+
+        <div id="header-gh-btns">
+          
+            
+              
+                  <iframe src="https://ghbtns.com/github-btn.html?user=0xash&repo=street2phone.py&type=star&count=true" frameborder="0" scrolling="0" width="120px" height="20px"></iframe>
+                
+            
+              
+                  <iframe src="https://ghbtns.com/github-btn.html?user=0xash&repo=street2phone.py&type=fork&count=true" frameborder="0" scrolling="0" width="120px" height="20px"></iframe>
+                
+            
+              
+                  <iframe src="https://ghbtns.com/github-btn.html?user=0xash&type=follow&count=true" frameborder="0" scrolling="0" width="220px" height="20px"></iframe>
+              
+            
+          
+        </div>
+      
+
+      
+
+      <article role="main" class="blog-post">
+        <p><img src="/assets/img/street2phone/street2phone2.png" alt="headerimage" /></p>
+
+<p class="box-note">Only care about the source code? Checkout the <a href="https://github.com/0xash/street2phone.py">Github Repo</a></p>
+
+<h1 id="background--motivation">Background &amp; Motivation</h1>
+
+<p>One day a friend asked me something along the lines of:</p>
+
+<p><em>“Do you think you could grab the local phone number code from an address?”</em></p>
+
+<p>A simple question. <em>“Yeah!”</em> I answered. A quick Google search can get you that info. Just look around Google Maps and figure out which is most common.</p>
+
+<p>What if you have 100 addresses? What if you not only want the area code, but a list of phone numbers from that area? This would get extremely tedious.</p>
+
+<p><strong>Enter the Places API.</strong></p>
+
+<h1 id="places-api">Places API</h1>
+
+<p>One of the first thoughts that entered my mind is that this could be automated with Python. A problem I foresaw is that finding an adequate data source would be difficult.</p>
+
+<p>So where would you go if you need to gather a large amount of geographical data? Google Maps seemed like a great candidate.</p>
+
+<h4 id="a-quick-google-search-and-some-digging-later-we-find-the-places-api-specifically-the-place-details-request">A quick <em>Google</em> search and some digging later, we find the Places API, specifically the Place Details request:</h4>
+
+<p><img src="/assets/img/street2phone/1.png" alt="Place Details" /></p>
+
+<p>This looks spot on. So we can issue a Place Details request and gather information including the <em>phone number</em>. Perfect.</p>
+
+<p>There’s one problem though, if we look at the above screenshot, to issue a Place Details request we will need a <code class="language-plaintext highlighter-rouge">place_id</code> from a Place Search.</p>
+
+<p>If we remember our original question, we’ll need to gather phone numbers for <em>nearby</em> locations, rather than the address itself (which may not possess a phone number entry within Google’s data).</p>
+
+<h4 id="this-brings-us-to-the-nearby-search-request">This brings us to the Nearby Search request:</h4>
+
+<p><img src="/assets/img/street2phone/2.png" alt="Nearby Search" /></p>
+
+<p>Essentially, we can gather a long list of nearby <code class="language-plaintext highlighter-rouge">place_id</code> parameters, then feed them into a Place Details search request to grab the phone number for each nearby location.</p>
+
+<h4 id="lets-take-a-look-at-the-api-parameters-required-for-this-request">Let’s take a look at the API parameters required for this request:</h4>
+
+<p><img src="/assets/img/street2phone/3.png" alt="Nearby Search Parameters" /></p>
+
+<h4 id="there-are-a-few-things-to-note-here">There are a few things to note here:</h4>
+
+<ul>
+  <li>We’ll need to specify an output type in the URL. I’ll choose <code class="language-plaintext highlighter-rouge">JSON</code> since I don’t care to mess around with XML.</li>
+  <li>If we look at the required parameters we can specify a <code class="language-plaintext highlighter-rouge">radius</code> (in meters) to gather results from. This is cool because we can custom tailor the amount of results we want (or don’t want) to gather.</li>
+  <li>Lastly, apart from the usual <code class="language-plaintext highlighter-rouge">key</code> parameter, there is also a <code class="language-plaintext highlighter-rouge">location</code> parameter that is required to issue the request. This must be served in the <em>longitude,latitude</em> format. Crap, so one last hurdle. How do we get a latitude/longitude from an address?</li>
+</ul>
+
+<p>Luckily, an additional API method exists for us to gather the latitude and longitude values we’ll need to issue a Nearby Search request for our address. This is a simple text search where we can use our original address as the arugment, therefore compelting the whole process.</p>
+
+<h4 id="taking-a-look-at-the-text-search-request">Taking a look at the Text Search Request:</h4>
+
+<p><img src="/assets/img/street2phone/4.png" alt="Text Search" /></p>
+
+<h4 id="now-lets-see-what-kind-of-output-this-will-return">Now let’s see what kind of output this will return:</h4>
+
+<p><img src="/assets/img/street2phone/5.png" alt="Text Search Example Output" /></p>
+
+<p>Okay, kind of confusing, but with all this information gathered, the flow for gathering phone numbers will look something like this:</p>
+
+<p><img src="/assets/img/street2phone/6.png" alt="Automation Process Flow" /></p>
+
+<p>Essentially, we’ll take an address, translate that to latitude/longitude, find the nearby list of <code class="language-plaintext highlighter-rouge">place_id</code> parameters, and then <em>finally</em> grab a list of phone numbers from those nearby places.</p>
+
+<p>You might be thinking that we can simply issue an original Place Details request from the <code class="language-plaintext highlighter-rouge">place_id</code> parameter that’s tied to our address, but this wouldn’t work since we want nearby phone numbers, and to grab the phone number of <em>nearby</em> locations, we’ll need the <code class="language-plaintext highlighter-rouge">place_id</code> parameter for <em>all</em> the nearby locations.</p>
+
+<p>It’s a little convuluded, but it’s the simplest way I could orchestrate it. If I’m missing a step that simplifies (and reduces the cost) of the whole process, Tell me!</p>
+
+<h1 id="automating-the-process-with-python">Automating the Process with Python</h1>
+
+<p>Now for the fun part; scripting this out and automating it.</p>
+
+<p>Let’s start with the fundamental stepping stone we’ll need to kick the process off; getting latitude and longitude. I’ll call this function <code class="language-plaintext highlighter-rouge">getLatLng</code>:</p>
+
+<h4 id="getlatlng">getLatLng():</h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">getLatLng</span><span class="p">(</span><span class="n">addr</span><span class="p">):</span>
+   <span class="n">latlongPayload</span> <span class="o">=</span> <span class="p">{</span><span class="s">'key'</span><span class="p">:</span> <span class="n">args</span><span class="p">.</span><span class="n">APIKEY</span><span class="p">,</span> <span class="s">'query'</span><span class="p">:</span> <span class="n">addr</span><span class="p">,</span> <span class="s">'fields'</span><span class="p">:</span> <span class="s">"lat,lng"</span><span class="p">}</span>
+   <span class="n">longlat</span> <span class="o">=</span> <span class="n">requests</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">"https://maps.googleapis.com/maps/api/place/textsearch/json?"</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">latlongPayload</span><span class="p">)</span>
+   <span class="k">try</span><span class="p">:</span>
+      <span class="n">lat</span> <span class="o">=</span> <span class="n">longlat</span><span class="p">.</span><span class="n">json</span><span class="p">()[</span><span class="s">'results'</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">'geometry'</span><span class="p">][</span><span class="s">'location'</span><span class="p">][</span><span class="s">'lat'</span><span class="p">]</span>
+      <span class="n">lng</span> <span class="o">=</span> <span class="n">longlat</span><span class="p">.</span><span class="n">json</span><span class="p">()[</span><span class="s">'results'</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">'geometry'</span><span class="p">][</span><span class="s">'location'</span><span class="p">][</span><span class="s">'lng'</span><span class="p">]</span>
+      <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span> <span class="o">+</span> <span class="s">","</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">lng</span><span class="p">)</span>
+   <span class="c1">## Catch errors
+</span>   <span class="k">except</span> <span class="p">(</span><span class="nb">IndexError</span><span class="p">,</span> <span class="nb">UnboundLocalError</span><span class="p">):</span>
+         <span class="k">print</span><span class="p">(</span><span class="s">"No lat long found"</span><span class="p">)</span>
+         <span class="k">pass</span>
+</code></pre></div></div>
+
+<p>For context, I’ve already setup a parser that is taking arguments that we can access via <code class="language-plaintext highlighter-rouge">args.&lt;value&gt;</code>.</p>
+
+<p>I’ll next use the Python <code class="language-plaintext highlighter-rouge">requests</code> module to issue a Text Search request using the <code class="language-plaintext highlighter-rouge">latlongPayload</code> array we’ve constructed. Note the <code class="language-plaintext highlighter-rouge">field</code> value in that array, which tells Google that we only care about the <code class="language-plaintext highlighter-rouge">lat</code> and <code class="language-plaintext highlighter-rouge">lng</code> values.</p>
+
+<p>After some indicing we can simply return the latitude and longitude of this address, in a pre-composed format that the Nearby Search request will need in our next step.</p>
+
+<p>Lastly, I’ll throw in some error handling to catch errors that may occur if Google can’t find a lat/lng value for a given address.</p>
+
+<p class="box-warning">To issue a request to Google APIs you’ll need a <em>devloper key</em>. For more information on how to get one check out <a href="https://developers.google.com/maps/documentation/javascript/get-api-key">this documentation</a>.</p>
+
+<h4 id="with-this-written-ill-go-ahead-and-give-the-getlatlng-method-a-try">With this written, I’ll go ahead and give the getLatLng method a try:</h4>
+
+<p><img src="/assets/img/street2phone/7.png" alt="Running getLatLng" /></p>
+
+<p>Nice! So we have a working Lat/Lng. Let’s move on to scripting the Nearby Search request.</p>
+
+<h4 id="getplaceids">getPlaceIDs():</h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">getPlaceIDs</span><span class="p">(</span><span class="n">addr</span><span class="p">):</span>
+   <span class="n">nearbyPayload</span> <span class="o">=</span> <span class="p">{</span><span class="s">'key'</span><span class="p">:</span> <span class="n">args</span><span class="p">.</span><span class="n">APIKEY</span><span class="p">,</span> <span class="s">'location'</span><span class="p">:</span> <span class="n">getLatLng</span><span class="p">(</span><span class="n">addr</span><span class="p">),</span> <span class="s">'radius'</span><span class="p">:</span> <span class="mi">150</span><span class="p">}</span>
+   <span class="n">nearbyReq</span> <span class="o">=</span> <span class="n">requests</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">"https://maps.googleapis.com/maps/api/place/nearbysearch/json?"</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">nearbyPayload</span><span class="p">)</span>
+   <span class="n">nearbysearches</span> <span class="o">=</span> <span class="n">nearbyReq</span><span class="p">.</span><span class="n">json</span><span class="p">()[</span><span class="s">'results'</span><span class="p">]</span>
+   <span class="n">placeIDList</span> <span class="o">=</span> <span class="p">[]</span>
+   
+   <span class="c1">## Iterate through JSON and add place_ids to list if not empty
+</span>   <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">nearbysearches</span><span class="p">:</span>
+      <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="s">'place_id'</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+         <span class="n">placeIDList</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s">'place_id'</span><span class="p">])</span>
+
+   <span class="k">return</span> <span class="n">placeIDList</span>
+</code></pre></div></div>
+
+<p class="box-warning">Nearby Search requests can quickly become expensive. If you’d like your search to return specific values (and cut down on prices), I would recommend checking out the <a href="https://developers.google.com/places/web-service/search#FindPlaceRequests">Find Place request documentation</a></p>
+
+<p>We can reuse our getLatLng method by simply including it within our passed along payload of <code class="language-plaintext highlighter-rouge">nearbyPayload</code>. We’ll also set the radius to 150 for a decent amount of results.</p>
+
+<p>After our <code class="language-plaintext highlighter-rouge">nearbyPayload</code> value is set, we can simply issue the Nearby Search request. Now we will indice to the <code class="language-plaintext highlighter-rouge">results</code> portion of the JSON, and itereate through the data. If the <code class="language-plaintext highlighter-rouge">place_id</code> value does not possess a <code class="language-plaintext highlighter-rouge">NoneType</code> value, we will append it to our <code class="language-plaintext highlighter-rouge">placeIDList</code> list that will be returned once the entire list of nearby locations has been iterated through.</p>
+
+<h4 id="with-our-function-completed-lets-try-to-grab-a-list-of-place_id-parameters">With our function completed, let’s try to grab a list of <code class="language-plaintext highlighter-rouge">place_id</code> parameters:</h4>
+
+<p><img src="/assets/img/street2phone/8.png" alt="Running getPlaceIDs" /></p>
+
+<p>Awesome. This brings us to the final stretch, with our working list of nearby <code class="language-plaintext highlighter-rouge">place_id</code> values, all we will need to do is issue a Place Details request for each and gather the phone number varaible.</p>
+
+<p>I’ll create a <code class="language-plaintext highlighter-rouge">makePhoneNumberList</code> function to automate this final process.</p>
+
+<h4 id="makephonenumberlist">makePhoneNumberList():</h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">makePhoneNumberList</span><span class="p">():</span>
+   <span class="n">phoneNumsList</span> <span class="o">=</span> <span class="p">[]</span>
+   <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">getPlaceIDs</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+      <span class="n">placeIDpayload</span> <span class="o">=</span> <span class="p">{</span><span class="s">'key'</span><span class="p">:</span> <span class="n">args</span><span class="p">.</span><span class="n">APIKEY</span><span class="p">,</span> <span class="s">'place_id'</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span> <span class="s">'fields'</span><span class="p">:</span> <span class="s">"formatted_phone_number"</span><span class="p">}</span>
+      <span class="n">phoneQuery</span> <span class="o">=</span> <span class="n">requests</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">'https://maps.googleapis.com/maps/api/place/details/json?'</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">placeIDpayload</span><span class="p">)</span>
+      <span class="n">phoneNumbs</span> <span class="o">=</span> <span class="n">phoneQuery</span><span class="p">.</span><span class="n">json</span><span class="p">()[</span><span class="s">'result'</span><span class="p">]</span>
+      <span class="n">phoneNumsList</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">phoneNumbs</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">"formatted_phone_number"</span><span class="p">))</span>
+      
+   <span class="k">return</span> <span class="n">phoneNumsList</span>
+</code></pre></div></div>
+
+<p>We begin by iterating through our list of Nearby Place IDs (gathered through use of our previous functions).</p>
+
+<p>Notice that we specify the <code class="language-plaintext highlighter-rouge">formatted_phone_number</code> field as the only desired return value for the request.</p>
+
+<p>For each Place ID in our list, we issue a Place Details request and append the returned phone number to a list called <code class="language-plaintext highlighter-rouge">phoneNumsList</code>.</p>
+
+<h4 id="running-the-makephonenumberlist-function">Running the makePhoneNumberList function:</h4>
+
+<p><img src="/assets/img/street2phone/9.png" alt="Running makePhoneNumberList" /></p>
+
+<p>A little clunky with the returned <code class="language-plaintext highlighter-rouge">NoneType</code> values, but it gets the job done.</p>
+
+<h2 id="the-final-product">The Final Product.</h2>
+
+<p>With all of our functions in place, and some extra scripting to provide meaningful output, our final result looks like the following:</p>
+
+<p><img src="/assets/img/street2phone/10.png" alt="Running the final script" /></p>
+
+<h1 id="conclusion">Conclusion</h1>
+
+<p>And that’s it. A lightweight (<em>and potentially costly</em>) way to mass grab phone numbers from a single address. You can check out the full documentation from the <a href="https://github.com/0xash/street2phone.py">Github Repo</a>.</p>
+
+<p>How useful is this? I have no idea. It was a great excuse to work on learning Python. Maybe you’ll find a cool use for the script, but hopefully at least it provides a decent guide on using some of the Google Places APIs.</p>
+
+
+      </article>
+
+      
+        <div class="blog-tags">
+          <span>Tags:</span>
+          
+            <a href="/tags#Python,">Python,</a>
+          
+            <a href="/tags#APIs">APIs</a>
+          
+        </div>
+      
+
+      
+
+      
+
+      <ul class="pagination blog-pager">
+        
+        <li class="page-item previous">
+          <a class="page-link" href="/2020-08-02-FristiLeaks-1.3/" data-toggle="tooltip" data-placement="top" title="FristiLeaks 1.3 Writeup">&larr; Previous Post</a>
+        </li>
+        
+        
+      </ul>
+      
+  
+  
+  
+
+  
+
+
+
+
+    </div>
+  </div>
+</div>
+
+
+  <footer>
+  <div class="container-md beautiful-jekyll-footer">
+    <div class="row">
+      <div class="col-xl-8 offset-xl-2 col-lg-10 offset-lg-1">
+      <ul class="list-inline text-center footer-links"><li class="list-inline-item">
+    <a href="https://github.com/0xash" title="GitHub">
+      <span class="fa-stack fa-lg" aria-hidden="true">
+        <i class="fas fa-circle fa-stack-2x"></i>
+        <i class="fab fa-github fa-stack-1x fa-inverse"></i>
+      </span>
+      <span class="sr-only">GitHub</span>
+   </a>
+  </li><li class="list-inline-item">
+    <a href="https://twitter.com/0xashhh" title="Twitter">
+      <span class="fa-stack fa-lg" aria-hidden="true">
+        <i class="fas fa-circle fa-stack-2x"></i>
+        <i class="fab fa-twitter fa-stack-1x fa-inverse"></i>
+      </span>
+      <span class="sr-only">Twitter</span>
+   </a>
+  </li><li class="list-inline-item">
+    <a href="https://linkedin.com/in/asher-andree-742399166" title="LinkedIn">
+      <span class="fa-stack fa-lg" aria-hidden="true">
+        <i class="fas fa-circle fa-stack-2x"></i>
+        <i class="fab fa-linkedin fa-stack-1x fa-inverse"></i>
+      </span>
+      <span class="sr-only">LinkedIn</span>
+   </a>
+  </li></ul>
+
+      
+      <p class="copyright text-muted">
+      
+        Asher Andree
+        &nbsp;&bull;&nbsp;
+      
+      2020
+
+      
+
+      
+      </p>
+      <p class="theme-by text-muted">
+        Powered by
+        <a href="https://beautifuljekyll.com">Beautiful Jekyll</a>
+      </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+  
+  
+    
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha256-4+XzXVhsDmqanXGHaHvgh1gMQKX40OUvDEBTu8JcmNs=" crossorigin="anonymous"></script>
+
+
+  
+    
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+
+
+  
+    
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+
+
+  
+
+
+
+  
+    <!-- doing something a bit funky here because I want to be careful not to include JQuery twice! -->
+    
+      <script src="/assets/js/beautifuljekyll.js"></script>
+    
+  
+
+
+
+
+
+
+
+
+
+</body>
+</html>

@@ -5,6 +5,7 @@ excerpt: Kioptrix Level 1.3 is the fourth iteration of the Kioptrix VulnHub chal
 tags: VulnHub
 comments: true
 social-share: false
+thumbnail-img: /assets/img/VulnHub/kioptrix1.3_logo.png
 ---
 
 Kioptrix Level 1.3 is the fourth iteration of the Kioptrix VulnHub challenges. It involves taking advantage of a SQL injection vulnerablility to login to a simple web application that leaks user credentials. 
